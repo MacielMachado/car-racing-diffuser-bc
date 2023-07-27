@@ -1,0 +1,68 @@
+import math
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+class DataHandler():
+    def __init__(self):
+        pass
+
+    def load_data(self, path):
+        return np.load(path).astype('float32')
+
+    def append_data(self, array_1, array_2):
+        return np.append(array_1, array_2, axis=0)
+
+    def frac_array(self, array, frac):
+        length = len(array)
+        return np.array(array[:int((1-frac) * length)]),\
+               np.array(array[int((1-frac) * length):])
+
+    def to_greyscale(self, imgs):
+        return np.dot(imgs, [0.2989, 0.5870, 0.1140])
+        
+    def normalizing(self, imgs):
+        return imgs/255.0
+    
+    def plot_batch(self, observations, actions, batch_size, render=False):
+        ''' Plot the states recordings.
+        '''
+        if not(render): return
+        fig, ax = plt.subplots(8,4)
+        for i in range(batch_size):
+            col = math.floor(i/4)
+            row = i - 4*col
+            frame = i
+            ax[col, row].imshow(observations[frame], cmap=plt.get_cmap("gray"))
+            ax[col, row].title.set_text(f'Frame: {i}, Actions: {list(actions[frame].numpy())}')
+            ax[col, row].axis('off')
+        plt.show()
+
+
+    def green_mask(self, observation):
+        
+        #convert to hsv
+        hsv = cv2.cvtColor(observation, x)
+        
+        mask_green = cv2.inRange(hsv, (36, 25, 25), (70, 255,255))
+
+        #slice the green
+        imask_green = mask_green>0
+        green = np.zeros_like(observation, np.uint8)
+        green[imask_green] = observation[imask_green]
+        
+        return(green)
+    
+    def gray_scale(self, observation):
+        gray = cv2.cvtColor(observation, cv2.COLOR_RGB2GRAY)
+        return gray
+    
+
+    def blur_image(self, observation):
+        blur = cv2.GaussianBlur(observation, (5, 5), 0)
+        return blur
+    
+
+    def canny_edge_detector(self, observation):
+        canny = cv2.Canny(observation, 50, 150)
+        return canny
