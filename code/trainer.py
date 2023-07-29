@@ -1,19 +1,21 @@
-from tqdm import tqdm
+import os
 import torch
 import wandb
+import logging
 import numpy as np
-from torch.utils.data import DataLoader
-from torchvision import transforms
-from models import Model_Cond_Diffusion, Model_cnn_mlp
-from train import ClawCustomDataset, CarRacingCustomDataset
-from data_preprocessing import DataHandler
+from tqdm import tqdm
+from utils import Params
 import matplotlib.pyplot as plt
-import math
+from torchvision import transforms
+from torch.utils.data import DataLoader
+from train import CarRacingCustomDataset
+from data_preprocessing import DataHandler
+from models import Model_Cond_Diffusion, Model_cnn_mlp
 
 class Trainer():
     def __init__(self, n_epoch, lrate, device, n_hidden, batch_size, n_T,
                  net_type, drop_prob, extra_diffusion_steps, embed_dim,
-                 guide_w, betas, dataset_path):
+                 guide_w, betas, dataset_path, name='', param_search=False):
         self.n_epoch = n_epoch
         self.lrate = lrate
         self.device = device
@@ -27,9 +29,11 @@ class Trainer():
         self.guide_w = guide_w
         self.betas = betas
         self.dataset_path = dataset_path
+        self.name = name
+        self.param_search = param_search
 
     def main(self):
-        wandb_run = self.config_wandb(project_name="car-racing-diffuser-bc")
+        self.config_wandb(project_name="car-racing-diffuser-bc", name=self.name)
         torch_data_train, dataload_train = self.prepare_dataset()
         x_dim, y_dim = self.get_x_and_y_dim(torch_data_train)
         conv_model = self.create_conv_model(x_dim, y_dim)
@@ -37,28 +41,23 @@ class Trainer():
         optim = self.create_optimizer(model)
         self.train(model, dataload_train, optim)
 
-    def config_wandb(self, project_name):
-        return wandb.init(  # Set the wandb project where this run will be logged
-                            project=project_name,
-
-                            # Set the session name
-                            # name="greyscale_96x96",
-
-                            # track hyperparameters and run metadata
-                            config={
-                                "n_epoch": self.n_epoch,
-                                "lrate": self.lrate,
-                                "device": self.device,
-                                "n_hidden": self.n_hidden,
-                                "batch_size": self.batch_size,
-                                "n_T": self.n_T,
-                                "net_type": self.net_type,
-                                "drop_prob": self.drop_prob,
-                                "extra_diffusion_steps": self.extra_diffusion_steps,
-                                "embed_dim": self.embed_dim,
-                                "guide_w": self.guide_w
-                            }
-                        )
+    def config_wandb(self, project_name, name):
+        config={
+                "n_epoch": self.n_epoch,
+                "lrate": self.lrate,
+                "device": self.device,
+                "n_hidden": self.n_hidden,
+                "batch_size": self.batch_size,
+                "n_T": self.n_T,
+                "net_type": self.net_type,
+                "drop_prob": self.drop_prob,
+                "extra_diffusion_steps": self.extra_diffusion_steps,
+                "embed_dim": self.embed_dim,
+                "guide_w": self.guide_w
+            }
+        if name != '':
+            return wandb.init(project=project_name, name=name, config=config)
+        return wandb.init(project=project_name, config=config)
 
     def prepare_dataset(self):
         tf = transforms.Compose([])
@@ -96,7 +95,7 @@ class Trainer():
     def create_optimizer(self, model):
         return torch.optim.Adam(model.parameters(), lr=self.lrate)
 
-    def decay_lr(self, epoch):
+    def decay_lr(self, epoch, lrate):
         return lrate * ((np.cos((epoch / self.n_epoch) * np.pi) + 1) / 2)
 
     def concatenate_observations(self):
@@ -107,14 +106,14 @@ class Trainer():
             results_ep = [ep]
             model.train()
 
-            lr_decay = self.decay_lr(ep)
+            lr_decay = self.decay_lr(ep, self.lrate)
             # train loop
             pbar = tqdm(dataload_train)
             loss_ep, n_batch = 0, 0
             for x_batch, y_batch in pbar:
                 DataHandler().plot_batch(x_batch, y_batch, self.batch_size, render=False)
-                x_batch = x_batch.type(torch.FloatTensor).to(device)
-                y_batch = y_batch.type(torch.FloatTensor).to(device)
+                x_batch = x_batch.type(torch.FloatTensor).to(self.device)
+                y_batch = y_batch.type(torch.FloatTensor).to(self.device)
                 loss = model.loss_on_batch(x_batch, y_batch)
                 optim.zero_grad()
                 loss.backward()
@@ -134,7 +133,14 @@ class Trainer():
                         "right_action_MSE": action_MSE[2]})
                 
             results_ep.append(loss_ep / n_batch)
+            
+        self.save_model(model)
+        wandb.finish()
 
+    def save_model(self, model):
+        if self.param_search == False:
+            return torch.save(model.state_dict(), os.getcwd()+'/model_novo.pkl')
+        return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):
     assert len(y) == len(y_hat)
@@ -146,31 +152,20 @@ def extract_action_mse(y, y_hat):
 
 if __name__ == '__main__':
 
-    n_epoch = 40
-    lrate = 1e-4
-    device = "cpu"
-    n_hidden = 128
-    batch_size = 32
-    n_T = 50
-    net_type = "transformer"
-    drop_prob = 0.0
-    extra_diffusion_steps = 16
-    embed_dim = 128
-    guide_w = 0.0
-    betas = (1e-4, 0.02)
     dataset_path = "tutorial"
-
-    trainer_instance = Trainer( n_epoch=n_epoch,
-                                lrate=lrate,
-                                device=device,
-                                n_hidden=n_hidden,
-                                batch_size=batch_size,
-                                n_T=n_T,
-                                net_type=net_type,
-                                drop_prob=drop_prob,
-                                extra_diffusion_steps=extra_diffusion_steps,
-                                embed_dim=embed_dim,
-                                guide_w=guide_w,
-                                betas=betas,
-                                dataset_path=dataset_path)
+    params = Params("experiments/default/params.json")
+    trainer_instance = Trainer( n_epoch=params.n_epoch,
+                                lrate=params.lrate,
+                                device=params.device,
+                                n_hidden=params.n_hidden,
+                                batch_size=params.batch_size,
+                                n_T=params.n_T,
+                                net_type=params.net_type,
+                                drop_prob=params.drop_prob,
+                                extra_diffusion_steps=params.extra_diffusion_steps,
+                                embed_dim=params.embed_dim,
+                                guide_w=params.guide_w,
+                                betas=(1e-4, 0.02),
+                                dataset_path=dataset_path,
+                                job_name='')
     trainer_instance.main()
