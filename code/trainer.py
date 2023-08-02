@@ -15,7 +15,8 @@ from models import Model_Cond_Diffusion, Model_cnn_mlp
 class Trainer():
     def __init__(self, n_epoch, lrate, device, n_hidden, batch_size, n_T,
                  net_type, drop_prob, extra_diffusion_steps, embed_dim,
-                 guide_w, betas, dataset_path, name='', param_search=False):
+                 guide_w, betas, dataset_path, run_wandb, record_run,
+                 name='', param_search=False):
         self.n_epoch = n_epoch
         self.lrate = lrate
         self.device = device
@@ -167,5 +168,7 @@ if __name__ == '__main__':
                                 guide_w=params.guide_w,
                                 betas=(1e-4, 0.02),
                                 dataset_path=dataset_path,
-                                job_name='')
+                                job_name='',
+                                run_wandb=False,
+                                record_run=True)
     trainer_instance.main()

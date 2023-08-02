@@ -2,12 +2,14 @@ import cv2
 import torch
 import numpy as np
 from cart_racing import CarRacing
-from models import Model_Cond_Diffusion, Model_cnn_mlp
 from data_preprocessing import DataHandler
+from record_observations import RecordObservations
+from models import Model_Cond_Diffusion, Model_cnn_mlp
 
 
-class Tester():
+class Tester(RecordObservations):
     def __init__(self, model, env, render=True, device="cpu"):
+        super(Tester).__init__()
         self.model = model
         self.env = env
         self.render = render
@@ -16,6 +18,7 @@ class Tester():
     def run(self):
         obs = self.env.reset()
         reward = 0
+        counter=0
         while True:
             self.model.eval()
             obs_tensor = self.preprocess_obs(obs)
@@ -25,10 +28,14 @@ class Tester():
                 ).unsqueeze(0)
             action = self.model.sample(obs_tensor).to(self.device)
             obs, new_reward, done, _ = self.env.step(action.detach().numpy()[0])
+            self.array_to_img(obs, action, frame=counter)
             reward += new_reward
+            counter += 1
             print(reward)
             if self.render: self.env.render()
-            if done: break
+            if done: 
+                break
+        hi = 1
 
     def preprocess_obs(self, obs_list):
         obs_list = DataHandler().to_greyscale(obs_list)
@@ -71,7 +78,7 @@ if __name__ == '__main__':
         drop_prob=drop_prob,
     guide_w=0.0,)
 
-    model.load_state_dict(torch.load("model.pkl"))
+    model.load_state_dict(torch.load("model_casa2.pkl"))
 
     stop = 1
     tester = Tester(model, env, render=True)

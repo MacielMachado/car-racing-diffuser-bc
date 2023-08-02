@@ -5,6 +5,11 @@ __pycache__/
 
 # Dataset
 tutorial
+frame
+
+# Videos
+*.mp4
+*.avi
 
 .DS_Store
 
