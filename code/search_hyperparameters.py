@@ -43,7 +43,8 @@ def launch_training_job(parent_dir, data_dir, job_name, params):
                                betas=(1e-4, 0.02),
                                dataset_path=data_dir,
                                name=job_name,
-                               param_search=True)
+                               param_search=True,
+                               run_wandb=False)
     trainer_instance.main()
    
 
