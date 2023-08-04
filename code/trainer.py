@@ -33,6 +33,7 @@ class Trainer():
         self.name = name
         self.param_search = param_search
         self.run_wandb = run_wandb
+        self.record_rum = record_run
 
     def main(self):
         if self.run_wandb:
@@ -173,5 +174,5 @@ if __name__ == '__main__':
                                 dataset_path=dataset_path,
                                 name='',
                                 run_wandb=False,
-                                record_run=True)
+                                record_run=False)
     trainer_instance.main()

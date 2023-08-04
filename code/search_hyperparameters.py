@@ -44,7 +44,8 @@ def launch_training_job(parent_dir, data_dir, job_name, params):
                                dataset_path=data_dir,
                                name=job_name,
                                param_search=True,
-                               run_wandb=False)
+                               run_wandb=False,
+                               record_run=True)
     trainer_instance.main()
    
 
@@ -59,7 +60,7 @@ if __name__ == '__main__':
     n_hidden_list = [128, 256, 512]
     batch_size_list = [32, 64, 128, 256, 512]
     n_T_list = [50, 75, 100, 1000]
-    net_type_list = ["transformers"]
+    net_type_list = ["transformer"]
     drop_prob_list = [0.0]
     extra_diffusion_steps_list = [16]
     embed_dim_list = [128, 256, 512]
@@ -81,18 +82,22 @@ if __name__ == '__main__':
     params = utils.Params(json_path)
 
     for index, item in enumerate(params_list):
-        params.n_epoch=item[0]
-        params.lrate=item[1]
+        params.n_epoch=int(item[0])
+        params.lrate=float(item[1])
         params.device=item[2]
-        params.n_hidden=item[3]
-        params.batch_size=item[4]
-        params.n_T=item[5]
+        params.n_hidden=int(item[3])
+        params.batch_size=int(item[4])
+        params.n_T=int(item[5])
         params.net_type=item[6]
-        params.drop_prob=item[7]
-        params.extra_diffusion_steps=item[8]
-        params.embed_dim=item[9]
-        params.guide_w=item[10]
+        params.drop_prob=float(item[7])
+        params.extra_diffusion_steps=int(item[8])
+        params.embed_dim=int(item[9])
+        params.guide_w=float(item[10])
         job_name = f"version_{index}"
+        model_dir = os.path.join(args.parent_dir, job_name)
+        if not os.path.exists(model_dir):
+            os.makedirs(model_dir)
+        utils.set_logger(os.path.join(args.parent_dir, job_name, 'train.log'))
         launch_training_job(args.parent_dir, args.data_dir, job_name, params)
     
     
