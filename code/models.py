@@ -303,7 +303,9 @@ class Model_mlp_diff_embed(nn.Module):
         # or pass through transformer encoder
         elif self.net_type == "transformer":
             net_output = self.forward_transformer(x_e, x_e_prev, y_e, t_e, x, y, t)
-
+        if x_e.is_cuda: 
+            del x_e, x_e_prev, y_e, t_e, context_mask
+            torch.cuda.empty_cache()
         return net_output
 
     def forward_fcnn(self, x_e, x_e_prev, y_e, t_e, x, y, t):
@@ -362,7 +364,9 @@ class Model_mlp_diff_embed(nn.Module):
 
         flat = torch.flatten(transformer_out, start_dim=1, end_dim=2)
         # shape out = [batchsize, 3 x trans_emb_dim]
-
+        if t_input.is_cuda: 
+            del t_input, y_input, x_input, block1, block2, block3, block4, transformer_out
+            torch.cuda.empty_cache()
         out = self.final(flat)
         # shape out = [batchsize, n_dim]
         return out
@@ -495,7 +499,9 @@ class Model_Cond_Diffusion(nn.Module):
             y_i = self.oneover_sqrta[i] * (y_i - eps * self.mab_over_sqrtmab[i]) + self.sqrt_beta_t[i] * z
             if return_y_trace and (i % 20 == 0 or i == self.n_T or i < 8):
                 y_i_store.append(y_i.detach().cpu().numpy())
-
+            if eps.is_cuda:
+                del eps, z, t_is
+                torch.cuda.empty_cache()
         if return_y_trace:
             return y_i, y_i_store
         else:
@@ -983,7 +989,7 @@ class Model_cnn_mlp(nn.Module):
             is_batch=False,
             activation="relu",
             net_type=self.net_type,
-            use_prev=False,
+            use_prev=True,
         )
 
     def forward(self, y, x, t, context_mask, x_embed=None):

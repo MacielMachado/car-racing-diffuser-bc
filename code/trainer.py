@@ -173,6 +173,6 @@ if __name__ == '__main__':
                                 betas=(1e-4, 0.02),
                                 dataset_path=dataset_path,
                                 name='',
-                                run_wandb=False,
+                                run_wandb=True,
                                 record_run=False)
     trainer_instance.main()
