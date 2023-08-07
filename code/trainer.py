@@ -126,8 +126,9 @@ class Trainer():
                 pbar.set_description(f"train loss: {loss_ep/n_batch:.4f}")
                 optim.step()
 
-            y_hat_batch = model.sample(x_batch)
-            action_MSE = extract_action_mse(y_batch, y_hat_batch)
+            with torch.no_grad():
+                y_hat_batch = model.sample(x_batch)
+                action_MSE = extract_action_mse(y_batch, y_hat_batch)
 
             if self.run_wandb:
                 # log metrics to wandb
@@ -172,7 +173,7 @@ if __name__ == '__main__':
                                 guide_w=params.guide_w,
                                 betas=(1e-4, 0.02),
                                 dataset_path=dataset_path,
-                                name='',
-                                run_wandb=False,
+                                name='trainer_400',
+                                run_wandb=True,
                                 record_run=False)
     trainer_instance.main()
