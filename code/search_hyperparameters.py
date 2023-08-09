@@ -54,16 +54,16 @@ if __name__ == '__main__':
     json_path = os.path.join(args.parent_dir, 'default/params.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
 
-    n_epoch_list = [100, 80, 40, 300, 500]
-    lrate_list = [1e-4, 1e-5]
+    n_epoch_list = [150, 200, 100, 80, 40, 300, 500]
+    lrate_list = [1e-5, 1e-4, 1e-6] 
     device_list = ["cuda"]
-    n_hidden_list = [512, 256, 128]
+    n_hidden_list = [128, 256, 512]
     batch_size_list = [64, 32, 24, 16]
     n_T_list = [100, 75, 50, 25]
     net_type_list = ["transformer"]
     drop_prob_list = [0.0]
     extra_diffusion_steps_list = [16]
-    embed_dim_list = [512, 256, 128]
+    embed_dim_list = [128, 256, 512]
     guide_w_list = [0.0]
     betas_list = [[1e-4, 0.02], [1e-4, 0.9]]
 
