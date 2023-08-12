@@ -2,7 +2,7 @@ import cv2
 import torch
 import wandb
 import numpy as np
-from cart_racing import CarRacing
+from cart_racing_v2 import CarRacing
 from data_preprocessing import DataHandler
 from record_observations import RecordObservations
 from models import Model_Cond_Diffusion, Model_cnn_mlp
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     x_shape = (96, 96, 1)
     y_dim = 3
 
-    env = CarRacing() 
+    env = CarRacing(render_mode="human") 
     nn_model = Model_cnn_mlp(
         x_shape, n_hidden, y_dim, embed_dim=128, net_type=net_type
     ).to(device)
@@ -95,4 +95,4 @@ if __name__ == '__main__':
 
     stop = 1
     tester = Tester(model, env, render=True)
-    tester.run()
+    tester.run(run_wandb=False)
