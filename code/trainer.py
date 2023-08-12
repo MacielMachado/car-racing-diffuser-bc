@@ -10,6 +10,8 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from train import CarRacingCustomDataset
 from data_preprocessing import DataHandler
+from run_car_racing import Tester
+from cart_racing_v2 import CarRacing
 from models import Model_Cond_Diffusion, Model_cnn_mlp
 
 class Trainer():
@@ -32,15 +34,23 @@ class Trainer():
         self.dataset_path = dataset_path
         self.name = name
         self.param_search = param_search
+        self.run_wandb = run_wandb
+        self.record_rum = record_run
 
     def main(self):
-        self.config_wandb(project_name="car-racing-diffuser-bc", name=self.name)
+        if self.run_wandb:
+            self.config_wandb(project_name="car-racing-diffuser-bc-v2", name=self.name)
         torch_data_train, dataload_train = self.prepare_dataset()
         x_dim, y_dim = self.get_x_and_y_dim(torch_data_train)
         conv_model = self.create_conv_model(x_dim, y_dim)
         model = self.create_agent_model(conv_model, x_dim, y_dim)
         optim = self.create_optimizer(model)
-        self.train(model, dataload_train, optim)
+        model = self.train(model, dataload_train, optim)
+        self.evaluate(model, CarRacing(), name='eval_'+self.name)
+        
+    def evaluate(self, model, env, name):
+        tester = Tester(model, env, render=True, device='cuda')
+        tester.run(run_wandb=True, name=name)
 
     def config_wandb(self, project_name, name):
         config={
@@ -123,20 +133,24 @@ class Trainer():
                 pbar.set_description(f"train loss: {loss_ep/n_batch:.4f}")
                 optim.step()
 
-            y_hat_batch = model.sample(x_batch)
-            action_MSE = extract_action_mse(y_batch, y_hat_batch)
+            with torch.no_grad():
+                y_hat_batch = model.sample(x_batch)
+                action_MSE = extract_action_mse(y_batch, y_hat_batch)
 
-            # log metrics to wandb
-            wandb.log({"loss": loss_ep/n_batch,
-                        "lr": lr_decay,
-                        "left_action_MSE": action_MSE[0],
-                        "acceleration_action_MSE": action_MSE[1],
-                        "right_action_MSE": action_MSE[2]})
-                
-            results_ep.append(loss_ep / n_batch)
+            if self.run_wandb:
+                # log metrics to wandb
+                wandb.log({"loss": loss_ep/n_batch,
+                            "lr": lr_decay,
+                            "left_action_MSE": action_MSE[0],
+                            "acceleration_action_MSE": action_MSE[1],
+                            "right_action_MSE": action_MSE[2]})
+                    
+                results_ep.append(loss_ep / n_batch)
             
         self.save_model(model)
-        wandb.finish()
+        if self.run_wandb: wandb.finish()
+        
+        return model
 
     def save_model(self, model):
         if self.param_search == False:
@@ -168,7 +182,7 @@ if __name__ == '__main__':
                                 guide_w=params.guide_w,
                                 betas=(1e-4, 0.02),
                                 dataset_path=dataset_path,
-                                job_name='',
-                                run_wandb=False,
-                                record_run=True)
+                                name='trainer_400',
+                                run_wandb=True,
+                                record_run=False)
     trainer_instance.main()

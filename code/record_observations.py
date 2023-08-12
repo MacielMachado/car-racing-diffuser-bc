@@ -59,7 +59,7 @@ class RecordObservations():
                               60,
                               self.frame_size)
 
-        for filename in os.listdir(dataset_path):
+        for filename in sorted(os.listdir(dataset_path)):
             img = cv2.imread(dataset_path+filename)
             out.write(img)
 

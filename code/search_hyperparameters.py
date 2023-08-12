@@ -43,7 +43,9 @@ def launch_training_job(parent_dir, data_dir, job_name, params):
                                betas=(1e-4, 0.02),
                                dataset_path=data_dir,
                                name=job_name,
-                               param_search=True)
+                               param_search=True,
+                               run_wandb=True,
+                               record_run=True)
     trainer_instance.main()
    
 
@@ -52,13 +54,13 @@ if __name__ == '__main__':
     json_path = os.path.join(args.parent_dir, 'default/params.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
 
-    n_epoch_list = [40, 60, 80, 100, 200, 300, 400, 500]
-    lrate_list = [1e-2, 1e-3, 1e-4, 1e-5]
-    device_list = ["cpu"]
+    n_epoch_list = [150, 200, 100, 80, 40, 300, 500]
+    lrate_list = [1e-5, 1e-4, 1e-6] 
+    device_list = ["cuda"]
     n_hidden_list = [128, 256, 512]
-    batch_size_list = [32, 64, 128, 256, 512]
-    n_T_list = [50, 75, 100, 1000]
-    net_type_list = ["transformers"]
+    batch_size_list = [64, 32, 24, 16]
+    n_T_list = [100, 75, 50, 25]
+    net_type_list = ["transformer"]
     drop_prob_list = [0.0]
     extra_diffusion_steps_list = [16]
     embed_dim_list = [128, 256, 512]
@@ -80,18 +82,31 @@ if __name__ == '__main__':
     params = utils.Params(json_path)
 
     for index, item in enumerate(params_list):
-        params.n_epoch=item[0]
-        params.lrate=item[1]
+        params.n_epoch=int(item[0])
+        params.lrate=float(item[1])
         params.device=item[2]
-        params.n_hidden=item[3]
-        params.batch_size=item[4]
-        params.n_T=item[5]
+        params.n_hidden=int(item[3])
+        params.batch_size=int(item[4])
+        params.n_T=int(item[5])
         params.net_type=item[6]
-        params.drop_prob=item[7]
-        params.extra_diffusion_steps=item[8]
-        params.embed_dim=item[9]
-        params.guide_w=item[10]
+        params.drop_prob=float(item[7])
+        params.extra_diffusion_steps=int(item[8])
+        params.embed_dim=int(item[9])
+        params.guide_w=float(item[10])
         job_name = f"version_{index}"
-        launch_training_job(args.parent_dir, args.data_dir, job_name, params)
+        model_dir = os.path.join(args.parent_dir, job_name)
+        if not os.path.exists(model_dir):
+            os.makedirs(model_dir)
+        utils.set_logger(os.path.join(args.parent_dir, job_name, 'train.log'))
+        
+        try:
+            launch_training_job(args.parent_dir, args.data_dir, job_name, params)
+            
+        except Exception as exception:
+            print("---------------------------------------------------")
+            print(f"The {job_name} couldn't be trained due to ")
+            print(f'{exception}')
+            print("---------------------------------------------------")
+            continue
     
     
