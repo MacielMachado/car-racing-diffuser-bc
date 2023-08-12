@@ -63,7 +63,7 @@ if __name__ == '__main__':
     net_type_list = ["transformers"]
     drop_prob_list = [0.0]
     extra_diffusion_steps_list = [16]
-    embed_dim_list = [512, 256, 128]
+    embed_dim_list = [128, 256, 512]
     guide_w_list = [0.0]
     betas_list = [[1e-4, 0.02], [1e-4, 0.9]]
 
