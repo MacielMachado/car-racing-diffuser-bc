@@ -983,7 +983,7 @@ class Model_cnn_mlp(nn.Module):
             is_batch=False,
             activation="relu",
             net_type=self.net_type,
-            use_prev=False,
+            use_prev=True,
         )
 
     def forward(self, y, x, t, context_mask, x_embed=None):

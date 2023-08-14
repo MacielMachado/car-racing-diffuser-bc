@@ -169,7 +169,7 @@ if __name__ == '__main__':
 
     dataset_path = "tutorial"
     params = Params("experiments/default/params.json")
-    trainer_instance = Trainer( n_epoch=1,
+    trainer_instance = Trainer( n_epoch=params.n_epoch,
                                 lrate=params.lrate,
                                 device=params.device,
                                 n_hidden=params.n_hidden,
