@@ -211,7 +211,7 @@ class Model_mlp_diff_embed(nn.Module):
         is_batch=False,
         activation="relu",
         net_type="fc",
-        use_prev=True,
+        use_prev=False,
     ):
         super(Model_mlp_diff_embed, self).__init__()
         self.embed_dim = embed_dim  # input embedding dimension
@@ -983,7 +983,7 @@ class Model_cnn_mlp(nn.Module):
             is_batch=False,
             activation="relu",
             net_type=self.net_type,
-            use_prev=True,
+            use_prev=False,
         )
 
     def forward(self, y, x, t, context_mask, x_embed=None):
@@ -1202,3 +1202,56 @@ class Model_Cond_EBM(nn.Module):
                 y_output = y_samples
 
         return y_output
+
+
+class Model_cnn_bc(nn.Module):
+    def __init__(self, n_hidden, y_dim, embed_dim, net_type, output_dim=None,
+                 input_ch=1, ch=4, cnn_out_dim=1152):
+        super(Model_cnn_bc, self).__init__()
+        self.n_hidden = n_hidden
+        self.y_dim = y_dim
+        self.embed_dim = embed_dim
+        self.net_type = net_type
+        self.output_dim = output_dim
+        self.conv_layer = nn.Sequential(
+            nn.Conv2d(in_channels=input_ch, out_channels=8*ch, kernel_size=(7,7)),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=8*ch, out_channels=ch*16, kernel_size=(5,5), stride=2),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=ch*16, out_channels=ch*32, kernel_size=(3,3), stride=2),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=ch*32, out_channels=ch*32, kernel_size=(3,3), stride=2),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=ch*32, out_channels=ch*64, kernel_size=(3,3), stride=2),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=ch*64, out_channels=ch*64, kernel_size=(3,3), stride=2),
+            nn.ReLU(),
+        )
+        self.flat_layer = nn.Sequential(
+            nn.Linear(64*ch*1*1, 256),
+            nn.ReLU()
+        )
+        self.output = nn.Linear(in_features=256,
+                                out_features=cnn_out_dim)
+        
+        self.nn_downstream = Model_mlp_diff_embed(
+            cnn_out_dim,
+            self.n_hidden,
+            self.y_dim,
+            self.embed_dim,
+            self.output_dim,
+            is_dropout=False,
+            is_batch=False,
+            activation="relu",
+            net_type=self.net_type,
+            use_prev=False,
+        )
+
+    def forward(self, y, x, t, context_mask, x_embed=None):
+        x = x.permute(0, 3, 2, 1)
+        x = self.conv_layer(x)
+        x = x.view(x.size(0), -1)
+        x = self.flat_layer(x)
+        x_embed = self.output(x)
+
+        return self.nn_downstream(y, x_embed, t, context_mask)

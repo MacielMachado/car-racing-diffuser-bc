@@ -91,7 +91,8 @@ if __name__ == '__main__':
         drop_prob=drop_prob,
     guide_w=0.0,)
 
-    model.load_state_dict(torch.load("model_casa2.pkl"))
+    # model.load_state_dict(torch.load("model_casa2.pkl"))
+    model.load_state_dict(torch.load("model_novo.pkl"))
 
     stop = 1
     tester = Tester(model, env, render=True)
