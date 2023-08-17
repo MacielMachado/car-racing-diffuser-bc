@@ -30,7 +30,7 @@ class Tester(RecordObservations):
             torch.from_numpy(obs_tensor).float().to(self.device).shape
             obs_tensor = (
                 torch.Tensor(obs_tensor).type(torch.FloatTensor).to(self.device)
-                ).unsqueeze(0)
+                )
             action = self.model.sample(obs_tensor).to(self.device)
             obs, new_reward, done, _, truncated = self.env.step(action.detach().cpu().numpy()[0])
             self.array_to_img(obs, action, frame=counter)
@@ -53,10 +53,8 @@ class Tester(RecordObservations):
     def preprocess_obs(self, obs_list):
         obs_list = DataHandler().to_greyscale(obs_list)
         obs_list = DataHandler().normalizing(obs_list)
-        obs_list = np.expand_dims(obs_list, -1)
-        # obs_list = obs_list/255.0
-        # dim = (32, 32)
-        # obs_list_resized = np.array([cv2.resize(obs_list[i], dim, interpolation=cv2.INTER_AREA) for i in range(len(obs_list))])
+        obs_list = np.expand_dims(obs_list, axis=0)
+        obs_list = DataHandler().stack_with_previous(obs_list)
         return obs_list
 
 
@@ -73,7 +71,7 @@ if __name__ == '__main__':
     net_type = "transformer"
     drop_prob = 0.0
     extra_diffusion_steps = 16
-    x_shape = (96, 96, 1)
+    x_shape = (96, 96, 4)
     y_dim = 3
 
     env = CarRacing(render_mode="human") 
@@ -92,7 +90,7 @@ if __name__ == '__main__':
     guide_w=0.0,)
 
     # model.load_state_dict(torch.load("model_casa2.pkl"))
-    model.load_state_dict(torch.load("model_novo.pkl"))
+    model.load_state_dict(torch.load("model_novo_bc.pkl"))
 
     stop = 1
     tester = Tester(model, env, render=True)

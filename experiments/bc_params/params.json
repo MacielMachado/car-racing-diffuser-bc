@@ -6,7 +6,7 @@
     "n_hidden": 128,
     "batch_size": 32,
     "n_T": 50,
-    "net_type": "fc",
+    "net_type": "transformer",
     "drop_prob": 0.0,
     "extra_diffusion_steps": 16,
     "embed_dim": 128,
