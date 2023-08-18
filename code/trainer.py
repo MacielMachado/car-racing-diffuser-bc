@@ -12,13 +12,13 @@ from train import CarRacingCustomDataset
 from data_preprocessing import DataHandler
 from run_car_racing import Tester
 from cart_racing_v2 import CarRacing
-from models import Model_Cond_Diffusion, Model_cnn_mlp
+from models import Model_Cond_Diffusion, Model_cnn_mlp, Model_cnn_bc
 
 class Trainer():
     def __init__(self, n_epoch, lrate, device, n_hidden, batch_size, n_T,
                  net_type, drop_prob, extra_diffusion_steps, embed_dim,
                  guide_w, betas, dataset_path, run_wandb, record_run,
-                 name='', param_search=False):
+                 name='', param_search=False, embedding="Model_cnn_BC"):
         self.n_epoch = n_epoch
         self.lrate = lrate
         self.device = device
@@ -36,6 +36,7 @@ class Trainer():
         self.param_search = param_search
         self.run_wandb = run_wandb
         self.record_rum = record_run
+        self.embedding = embedding
 
     def main(self):
         if self.run_wandb:
@@ -49,7 +50,7 @@ class Trainer():
         self.evaluate(model, CarRacing(), name='eval_'+self.name)
         
     def evaluate(self, model, env, name):
-        tester = Tester(model, env, render=True, device='cuda')
+        tester = Tester(model, env, render=True, device=self.device)
         tester.run(run_wandb=True, name=name)
 
     def config_wandb(self, project_name, name):
@@ -81,15 +82,21 @@ class Trainer():
         return torch_data_train, dataload_train
     
     def get_x_and_y_dim(self, torch_data_train):
-        torch_data_train.image_all = np.expand_dims(torch_data_train.image_all, axis=-1)
+        if len(torch_data_train.image_all.shape) == 3:
+            torch_data_train.image_all = np.expand_dims(torch_data_train.image_all, axis=-1)
         x_dim = torch_data_train.image_all.shape[1:]
         y_dim = torch_data_train.action_all.shape[1]
         return x_dim, y_dim
     
     def create_conv_model(self, x_dim, y_dim):
-        return Model_cnn_mlp(x_dim, self.n_hidden, y_dim,
-                             embed_dim=self.embed_dim,
-                             net_type=self.net_type).to(self.device)
+        if self.embedding == "Model_cnn_BC":
+            return Model_cnn_bc(self.n_hidden, y_dim,
+                                embed_dim=self.embed_dim,
+                                net_type=self.net_type).to(self.device)
+        elif self.embedding == "Model_cnn_mlp":
+            return Model_cnn_mlp(x_dim, self.n_hidden, y_dim,
+                                embed_dim=self.embed_dim,
+                                net_type=self.net_type).to(self.device)
     
     def create_agent_model(self, conv_model, x_dim, y_dim):
         return Model_Cond_Diffusion(
@@ -154,7 +161,7 @@ class Trainer():
 
     def save_model(self, model):
         if self.param_search == False:
-            return torch.save(model.state_dict(), os.getcwd()+'/model_novo.pkl')
+            return torch.save(model.state_dict(), os.getcwd()+'/model_novo_bc.pkl')
         return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):
@@ -168,7 +175,7 @@ def extract_action_mse(y, y_hat):
 if __name__ == '__main__':
 
     dataset_path = "tutorial"
-    params = Params("experiments/default/params.json")
+    params = Params("experiments/bc_params/params.json")
     trainer_instance = Trainer( n_epoch=params.n_epoch,
                                 lrate=params.lrate,
                                 device=params.device,
@@ -183,6 +190,7 @@ if __name__ == '__main__':
                                 betas=(1e-4, 0.02),
                                 dataset_path=dataset_path,
                                 name='trainer_400',
-                                run_wandb=True,
-                                record_run=False)
+                                run_wandb=False,
+                                record_run=False,
+                                embedding=params.embedding)
     trainer_instance.main()

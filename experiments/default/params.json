@@ -10,5 +10,6 @@
     "drop_prob": 0.0,
     "extra_diffusion_steps": 16,
     "embed_dim": 128,
-    "guide_w": 0.0
+    "guide_w": 0.0,
+    "embedding": "Model_cnn_mlp"
 }
