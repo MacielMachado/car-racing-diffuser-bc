@@ -2,7 +2,7 @@
     "model_name": "default",
     "n_epoch": 40,
     "lrate": 1e-4,
-    "device": "cpu",
+    "device": "cuda",
     "n_hidden": 128,
     "batch_size": 32,
     "n_T": 50,
