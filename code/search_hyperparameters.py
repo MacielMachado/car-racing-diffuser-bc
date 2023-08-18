@@ -9,7 +9,7 @@ PYTHON = sys.executable
 parser = argparse.ArgumentParser()
 parser.add_argument('--parent_dir', default='experiments/',
                     help='Directory containing params.json')
-parser.add_argument('--data_dir', default='tutorial',
+parser.add_argument('--data_dir', default='dataset_fixed/',
                     help='Directory containing the dataset')
 
 def launch_training_job(parent_dir, data_dir, job_name, params):
@@ -54,13 +54,13 @@ if __name__ == '__main__':
     json_path = os.path.join(args.parent_dir, 'default/params.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
 
-    n_epoch_list = [40, 60, 80, 100, 200, 300, 400, 500]
-    lrate_list = [1e-2, 1e-3, 1e-4, 1e-5]
-    device_list = ["cpu"]
+    n_epoch_list = [40, 60, 80, 150, 250]
+    lrate_list = [1e-4, 1e-5]
+    device_list = ["cuda"]
     n_hidden_list = [128, 256, 512]
     batch_size_list = [32, 64, 128, 256, 512]
-    n_T_list = [50, 75, 100, 1000]
-    net_type_list = ["transformer"]
+    n_T_list = [20, 50, 75]
+    net_type_list = ["transformer", "fc"]
     drop_prob_list = [0.0]
     extra_diffusion_steps_list = [16]
     embed_dim_list = [128, 256, 512]
@@ -98,6 +98,15 @@ if __name__ == '__main__':
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
         utils.set_logger(os.path.join(args.parent_dir, job_name, 'train.log'))
-        launch_training_job(args.parent_dir, args.data_dir, job_name, params)
+        
+        try:
+            launch_training_job(args.parent_dir, args.data_dir, job_name, params)
+            
+        except Exception as exception:
+            print("---------------------------------------------------")
+            print(f"The {job_name} couldn't be trained due to ")
+            print(f'{exception}')
+            print("---------------------------------------------------")
+            continue
     
     

@@ -6,7 +6,9 @@ import numpy as np
 from tqdm import tqdm
 from utils import Params
 import matplotlib.pyplot as plt
+from run_car_racing import Tester
 from torchvision import transforms
+from cart_racing_v2 import CarRacing
 from torch.utils.data import DataLoader
 from train import CarRacingCustomDataset
 from data_preprocessing import DataHandler
@@ -37,13 +39,18 @@ class Trainer():
 
     def main(self):
         if self.run_wandb:
-            self.config_wandb(project_name="car-racing-diffuser-bc", name=self.name)
+            self.config_wandb(project_name="car-racing-diffuser-bc-v2", name=self.name)
         torch_data_train, dataload_train = self.prepare_dataset()
         x_dim, y_dim = self.get_x_and_y_dim(torch_data_train)
         conv_model = self.create_conv_model(x_dim, y_dim)
         model = self.create_agent_model(conv_model, x_dim, y_dim)
         optim = self.create_optimizer(model)
-        self.train(model, dataload_train, optim)
+        model = self.train(model, dataload_train, optim)
+        self.evaluate(model, CarRacing(), name='eval_'+self.name)
+        
+    def evaluate(self, model, env, name):
+        tester = Tester(model, env, render=True, device=self.device)
+        tester.run(run_wandb=self.run_wandb, name=name)
 
     def config_wandb(self, project_name, name):
         config={
@@ -74,7 +81,8 @@ class Trainer():
         return torch_data_train, dataload_train
     
     def get_x_and_y_dim(self, torch_data_train):
-        torch_data_train.image_all = np.expand_dims(torch_data_train.image_all, axis=-1)
+        if len(torch_data_train.image_all.shape) == 3:
+            torch_data_train.image_all = np.expand_dims(torch_data_train.image_all, axis=-1)
         x_dim = torch_data_train.image_all.shape[1:]
         y_dim = torch_data_train.action_all.shape[1]
         return x_dim, y_dim
@@ -126,8 +134,9 @@ class Trainer():
                 pbar.set_description(f"train loss: {loss_ep/n_batch:.4f}")
                 optim.step()
 
-            y_hat_batch = model.sample(x_batch)
-            action_MSE = extract_action_mse(y_batch, y_hat_batch)
+            with torch.no_grad():
+                y_hat_batch = model.sample(x_batch)
+                action_MSE = extract_action_mse(y_batch, y_hat_batch)
 
             if self.run_wandb:
                 # log metrics to wandb
@@ -141,6 +150,8 @@ class Trainer():
             
         self.save_model(model)
         if self.run_wandb: wandb.finish()
+        
+        return model
 
     def save_model(self, model):
         if self.param_search == False:
@@ -157,13 +168,13 @@ def extract_action_mse(y, y_hat):
 
 if __name__ == '__main__':
 
-    dataset_path = "tutorial"
+    dataset_path = "dataset_fixed"
     params = Params("experiments/default/params.json")
-    trainer_instance = Trainer( n_epoch=params.n_epoch,
+    trainer_instance = Trainer( n_epoch=1,
                                 lrate=params.lrate,
                                 device=params.device,
                                 n_hidden=params.n_hidden,
-                                batch_size=params.batch_size,
+                                batch_size=1,
                                 n_T=params.n_T,
                                 net_type=params.net_type,
                                 drop_prob=params.drop_prob,

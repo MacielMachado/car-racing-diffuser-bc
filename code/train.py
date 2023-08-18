@@ -154,22 +154,11 @@ class CarRacingCustomDataset(Dataset):
         
         # to grey scale and normalizing
         all_images = []
+        self.image_all = DataHandler().to_greyscale(self.image_all)
+        self.image_all = DataHandler().normalizing(self.image_all)
+        self.image_all = DataHandler().stack_with_previous(self.image_all)
         self.image_all = self.image_all[90:]
-        for image in self.image_all:
-            # self.image_all = DataHandler().to_greyscale(self.image_all)
-            # self.image_all = DataHandler().green_mask(self.image_all)
-            image = DataHandler().gray_scale(image.astype(np.uint8))
-            image = DataHandler().blur_image(image)
-            image = DataHandler().canny_edge_detector(image)
-            # image = DataHandler().normalizing(image[90:])
-            all_images.append(list(image))
-        self.image_all = np.array(all_images)
         self.action_all = self.action_all[90:]
-            
-
-        # dim = (32, 32)
-        # resized = np.array([cv2.resize(self.image_all[i], dim, interpolation=cv2.INTER_AREA) for i in range(len(self.image_all))])
-        # self.image_all = resized        
 
     def __len__(self):
         return self.image_all.shape[0]
