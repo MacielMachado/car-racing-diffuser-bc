@@ -44,7 +44,7 @@ def launch_training_job(parent_dir, data_dir, job_name, params):
                                dataset_path=data_dir,
                                name=job_name,
                                param_search=True,
-                               run_wandb=False,
+                               run_wandb=True,
                                record_run=True)
     trainer_instance.main()
    
@@ -54,16 +54,16 @@ if __name__ == '__main__':
     json_path = os.path.join(args.parent_dir, 'default/params.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
 
-    n_epoch_list = [40, 60, 80, 150, 250]
+    n_epoch_list = [40, 80, 150, 250, 500]
     lrate_list = [1e-4, 1e-5]
     device_list = ["cuda"]
     n_hidden_list = [128, 256, 512]
-    batch_size_list = [32, 64, 128, 256, 512]
+    batch_size_list = [32, 64, 512]
     n_T_list = [20, 50, 75]
     net_type_list = ["transformer", "fc"]
     drop_prob_list = [0.0]
     extra_diffusion_steps_list = [16]
-    embed_dim_list = [128, 256, 512]
+    embed_dim_list = [128]
     guide_w_list = [0.0]
     betas_list = [[1e-4, 0.02], [1e-4, 0.9]]
 
