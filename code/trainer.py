@@ -42,7 +42,7 @@ class Trainer():
 
     def main(self):
         if self.run_wandb:
-            self.config_wandb(project_name="car-racing-diffuser-bc-v2-v2", name=self.name)
+            self.config_wandb(project_name="car-racing-diffuser-bc-v2", name=self.name)
         torch_data_train, dataload_train = self.prepare_dataset()
         x_dim, y_dim = self.get_x_and_y_dim(torch_data_train)
         conv_model = self.create_conv_model(x_dim, y_dim)
@@ -180,7 +180,7 @@ if __name__ == '__main__':
 
     dataset_path = "dataset_fixed"
     params = Params("experiments/default/params.json")
-    trainer_instance = Trainer( n_epoch=1,
+    trainer_instance = Trainer( n_epoch=params.n_epoch,
                                 lrate=params.lrate,
                                 device=params.device,
                                 n_hidden=params.n_hidden,
