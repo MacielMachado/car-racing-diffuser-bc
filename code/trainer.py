@@ -6,7 +6,9 @@ import numpy as np
 from tqdm import tqdm
 from utils import Params
 import matplotlib.pyplot as plt
+from run_car_racing import Tester
 from torchvision import transforms
+from cart_racing_v2 import CarRacing
 from torch.utils.data import DataLoader
 from train import CarRacingCustomDataset
 from data_preprocessing import DataHandler
@@ -51,7 +53,7 @@ class Trainer():
         
     def evaluate(self, model, env, name):
         tester = Tester(model, env, render=True, device=self.device)
-        tester.run(run_wandb=True, name=name)
+        tester.run(run_wandb=self.run_wandb, name=name)
 
     def config_wandb(self, project_name, name):
         config={
@@ -84,6 +86,8 @@ class Trainer():
     def get_x_and_y_dim(self, torch_data_train):
         if len(torch_data_train.image_all.shape) == 3:
             torch_data_train.image_all = np.expand_dims(torch_data_train.image_all, axis=-1)
+        if len(torch_data_train.action_all.shape) == 3:
+            torch_data_train.action_all = np.squeeze(torch_data_train.action_all, axis=1)
         x_dim = torch_data_train.image_all.shape[1:]
         y_dim = torch_data_train.action_all.shape[1]
         return x_dim, y_dim
@@ -174,13 +178,13 @@ def extract_action_mse(y, y_hat):
 
 if __name__ == '__main__':
 
-    dataset_path = "tutorial"
-    params = Params("experiments/bc_params/params.json")
+    dataset_path = "dataset_fixed"
+    params = Params("experiments/default/params.json")
     trainer_instance = Trainer( n_epoch=params.n_epoch,
                                 lrate=params.lrate,
                                 device=params.device,
                                 n_hidden=params.n_hidden,
-                                batch_size=params.batch_size,
+                                batch_size=1,
                                 n_T=params.n_T,
                                 net_type=params.net_type,
                                 drop_prob=params.drop_prob,
