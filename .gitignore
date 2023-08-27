@@ -6,6 +6,10 @@ __pycache__/
 # Dataset
 tutorial
 frame
+experiments
+
+# Models
+*.pkl
 
 # Videos
 *.mp4
