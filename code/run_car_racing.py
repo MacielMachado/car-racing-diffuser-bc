@@ -44,7 +44,7 @@ class Tester(RecordObservations):
                 self.array_to_img(obs, action, frame=counter)
                 reward += new_reward
                 counter += 1
-                print(reward)
+                print(f"{version} - count: {counter} - reward: {reward}")
                 if done or truncated: 
                     break
                 if run_wandb:
