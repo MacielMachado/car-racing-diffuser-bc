@@ -24,10 +24,11 @@ class Tester(RecordObservations):
         self.name = name
         if run_wandb:
             self.config_wandb(project_name="car-racing-diffuser-bc-v2", name=name)
-        test_epoch = 0
+        episode = 0
         reward_list = []          
-        while test_epoch < 30:
+        while episode < 10:
             obs, _ = self.env.reset()
+            reward_list = []   
             reward = 0
             counter=0
             done = False
@@ -44,13 +45,13 @@ class Tester(RecordObservations):
                 self.array_to_img(obs, action, frame=counter)
                 reward += new_reward
                 counter += 1
-                print(f"{version} - count: {counter} - reward: {reward}")
+                print(f"{version} - episode: {episode} - count: {counter} - reward: {reward}")
                 if done or truncated: 
                     break
                 if run_wandb:
                     wandb.log({"reward": reward})
             if run_wandb: wandb.finish()
-            test_epoch += 1
+            episode += 1
             reward_list.append(reward)
         self.scatter_plot_reward(reward_list)
 
@@ -64,6 +65,7 @@ class Tester(RecordObservations):
         path = "experiments/"+self.name+"/"
         os.makedirs(path, exist_ok=True)
         plt.savefig(path+self.name+"_scatter.png")
+        plt.close()
 
     def config_wandb(self, project_name, name):
         config={}
@@ -84,6 +86,7 @@ def get_dim(x, y):
 
 if __name__ == '__main__':
     versions = [f for f in os.listdir("experiments") if ('version' in f and '.pkl' not in f)]
+    versions = ["version_3", "version_4"]
     for version in sorted(versions):
         params = Params("experiments/" + version + "/params.json")
 
@@ -100,7 +103,7 @@ if __name__ == '__main__':
         x_shape = (96, 96, 4)
         y_dim = 3
 
-        env = CarRacing(render_mode="rgb_array") 
+        env = CarRacing(render_mode="human") 
         nn_model = Model_cnn_mlp(
             x_shape, n_hidden, y_dim, embed_dim=embed_dim, net_type=net_type
         ).to(device)
