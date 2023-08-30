@@ -1206,13 +1206,14 @@ class Model_Cond_EBM(nn.Module):
 
 class Model_cnn_bc(nn.Module):
     def __init__(self, n_hidden, y_dim, embed_dim, net_type, output_dim=None,
-                 input_ch=1, ch=4, cnn_out_dim=1152):
+                 input_ch=4, ch=8, cnn_out_dim=1152):
         super(Model_cnn_bc, self).__init__()
         self.n_hidden = n_hidden
         self.y_dim = y_dim
         self.embed_dim = embed_dim
         self.net_type = net_type
         self.output_dim = output_dim
+
         self.conv_layer = nn.Sequential(
             nn.Conv2d(in_channels=input_ch, out_channels=8*ch, kernel_size=(7,7)),
             nn.ReLU(),
@@ -1228,10 +1229,10 @@ class Model_cnn_bc(nn.Module):
             nn.ReLU(),
         )
         self.flat_layer = nn.Sequential(
-            nn.Linear(64*ch*1*1, 256),
+            nn.Linear(64*ch*1*1, 1024),
             nn.ReLU()
         )
-        self.output = nn.Linear(in_features=256,
+        self.output = nn.Linear(in_features=1024,
                                 out_features=cnn_out_dim)
         
         self.nn_downstream = Model_mlp_diff_embed(
