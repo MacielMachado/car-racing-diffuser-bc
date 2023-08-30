@@ -89,7 +89,7 @@ class Trainer():
         return x_dim, y_dim
     
     def create_conv_model(self, x_dim, y_dim):
-        if self.embedding == "Model_cnn_BC":
+        if self.embedding == "Model_cnn_bc":
             return Model_cnn_bc(self.n_hidden, y_dim,
                                 embed_dim=self.embed_dim,
                                 net_type=self.net_type).to(self.device)

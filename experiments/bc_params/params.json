@@ -1,15 +1,15 @@
 {
-    "model_name": "bc_params",
-    "n_epoch": 40,
-    "lrate": 1e-4,
+    "model_name": "default",
+    "n_epoch": 150,
+    "lrate": 0.0001,
     "device": "cpu",
     "n_hidden": 128,
     "batch_size": 32,
-    "n_T": 50,
+    "n_T": 20,
     "net_type": "transformer",
     "drop_prob": 0.0,
     "extra_diffusion_steps": 16,
     "embed_dim": 128,
     "guide_w": 0.0,
-    "embedding": "Model_cnn_mlp"
+    "embedding": "Model_cnn_bc"
 }

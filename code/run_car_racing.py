@@ -27,8 +27,8 @@ class Tester(RecordObservations):
         episode = 0
         reward_list = []          
         while episode < 10:
+            np.random.seed(40) # 1
             obs, _ = self.env.reset()
-            reward_list = []   
             reward = 0
             counter=0
             done = False
@@ -64,7 +64,7 @@ class Tester(RecordObservations):
         plt.grid()
         path = "experiments/"+self.name+"/"
         os.makedirs(path, exist_ok=True)
-        plt.savefig(path+self.name+"_scatter.png")
+        plt.savefig(path+self.name+"_scatter_fixed.png")
         plt.close()
 
     def config_wandb(self, project_name, name):
