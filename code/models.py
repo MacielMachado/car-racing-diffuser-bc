@@ -1206,7 +1206,7 @@ class Model_Cond_EBM(nn.Module):
 
 class Model_cnn_bc(nn.Module):
     def __init__(self, n_hidden, y_dim, embed_dim, net_type, output_dim=None,
-                 input_ch=1, ch=4, cnn_out_dim=1152):
+                 input_ch=4, ch=8, cnn_out_dim=1152):
         super(Model_cnn_bc, self).__init__()
         self.n_hidden = n_hidden
         self.y_dim = y_dim

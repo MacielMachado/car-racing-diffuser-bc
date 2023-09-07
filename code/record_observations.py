@@ -25,7 +25,7 @@ class RecordObservations():
         np.save(self.path+'actions_'+'.npy', 
                 self.actions)
         
-    def array_to_img(self, obs, action, frame=''):
+    def array_to_img(self, obs, action, frame='', name=''):
         im = Image.fromarray(obs)
         I1 = ImageDraw.Draw(im)
         action = list(action.detach().cpu().numpy()[0])
@@ -35,7 +35,7 @@ class RecordObservations():
                 fill=(255, 0, 0),
                 align='left')
         os.makedirs('frame', exist_ok=True)
-        im_name = 'frame/observation_'+str(frame)+'.jpeg'
+        im_name = 'frame/observation_'+name+str(frame)+'.jpeg'
         im.save(im_name)
         
     def load_npy(self, dataset_path):

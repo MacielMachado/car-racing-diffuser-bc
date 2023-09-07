@@ -139,8 +139,8 @@ class CarRacingCustomDataset(Dataset):
         self, DATASET_PATH, transform=None, train_or_test="train", train_prop=0.9
     ):
         self.DATASET_PATH = DATASET_PATH
-        self.image_all = np.load(os.path.join(DATASET_PATH, "TRAIN/states_TRAIN.npy"), allow_pickle=True)
-        self.action_all = np.load(os.path.join(DATASET_PATH, "TRAIN/actions_TRAIN.npy"), allow_pickle=True)
+        self.image_all = np.load(os.path.join(DATASET_PATH, "states_expert.npy"), allow_pickle=True)
+        self.action_all = np.load(os.path.join(DATASET_PATH, "actions_expert.npy"), allow_pickle=True)
         self.transform = transform
         n_train = int(self.image_all.shape[0] * train_prop)
         if train_or_test == "train":

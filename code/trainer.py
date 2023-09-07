@@ -20,7 +20,7 @@ class Trainer():
     def __init__(self, n_epoch, lrate, device, n_hidden, batch_size, n_T,
                  net_type, drop_prob, extra_diffusion_steps, embed_dim,
                  guide_w, betas, dataset_path, run_wandb, record_run,
-                 name='', param_search=False, embedding="Model_cnn_BC"):
+                 name='', param_search=False, embedding="Model_cnn_bc"):
         self.n_epoch = n_epoch
         self.lrate = lrate
         self.device = device
@@ -42,7 +42,7 @@ class Trainer():
 
     def main(self):
         if self.run_wandb:
-            self.config_wandb(project_name="car-racing-diffuser-bc-v2", name=self.name)
+            self.config_wandb(project_name="car-racing-diffuser-bc-v3", name=self.name)
         torch_data_train, dataload_train = self.prepare_dataset()
         x_dim, y_dim = self.get_x_and_y_dim(torch_data_train)
         conv_model = self.create_conv_model(x_dim, y_dim)
@@ -93,7 +93,7 @@ class Trainer():
         return x_dim, y_dim
     
     def create_conv_model(self, x_dim, y_dim):
-        if self.embedding == "Model_cnn_BC":
+        if self.embedding == "Model_cnn_bc":
             return Model_cnn_bc(self.n_hidden, y_dim,
                                 embed_dim=self.embed_dim,
                                 net_type=self.net_type).to(self.device)
@@ -157,9 +157,14 @@ class Trainer():
                             "right_action_MSE": action_MSE[2]})
                     
                 results_ep.append(loss_ep / n_batch)
-            
-        self.save_model(model)
+
+            if ep % 50 == 0:
+                self.name = self.name + "_ep_{ep}"
+                self.evaluate(model, CarRacing(), name='eval_'+self.name)
+                self.save_model(model)
+
         if self.run_wandb: wandb.finish()
+        self.save_model(model)
         
         return model
 
@@ -178,7 +183,7 @@ def extract_action_mse(y, y_hat):
 
 if __name__ == '__main__':
 
-    dataset_path = "dataset_fixed"
+    dataset_path = "tutorial_2"
     params = Params("experiments/default/params.json")
     trainer_instance = Trainer( n_epoch=params.n_epoch,
                                 lrate=params.lrate,

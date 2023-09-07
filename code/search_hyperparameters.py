@@ -9,7 +9,7 @@ PYTHON = sys.executable
 parser = argparse.ArgumentParser()
 parser.add_argument('--parent_dir', default='experiments/',
                     help='Directory containing params.json')
-parser.add_argument('--data_dir', default='dataset_fixed/',
+parser.add_argument('--data_dir', default='tutorial_2/',
                     help='Directory containing the dataset')
 
 def launch_training_job(parent_dir, data_dir, job_name, params):
@@ -54,12 +54,12 @@ if __name__ == '__main__':
     json_path = os.path.join(args.parent_dir, 'default/params.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
 
-    n_epoch_list = [40, 80, 150, 250, 500]
+    n_epoch_list = [250]
     lrate_list = [1e-4, 1e-5]
-    device_list = ["cuda"]
+    device_list = ["cpu"]
     n_hidden_list = [128, 256, 512]
-    batch_size_list = [32, 64, 512]
-    n_T_list = [20, 50, 75]
+    batch_size_list = [32, 64]
+    n_T_list = [20, 50]
     net_type_list = ["transformer", "fc"]
     drop_prob_list = [0.0]
     extra_diffusion_steps_list = [16]

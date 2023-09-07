@@ -18,7 +18,8 @@ class Tester(RecordObservations):
 
     def run(self, run_wandb, name=''):
         if run_wandb:
-            self.config_wandb(project_name="car-racing-diffuser-bc-v2", name=name)
+            self.config_wandb(project_name="car-racing-diffuser-bc-v3", name=name)
+        np.random.seed(40)
         obs, _ = self.env.reset()
         reward = 0
         counter=0
@@ -33,7 +34,7 @@ class Tester(RecordObservations):
                 )
             action = self.model.sample(obs_tensor).to(self.device)
             obs, new_reward, done, _, truncated = self.env.step(action.detach().cpu().numpy()[0])
-            self.array_to_img(obs, action, frame=counter)
+            self.array_to_img(obs, action, frame=counter, name=name)
             reward += new_reward
             counter += 1
             print(reward)
