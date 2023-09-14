@@ -158,9 +158,10 @@ class Trainer():
                     
                 results_ep.append(loss_ep / n_batch)
 
-            if ep % 50 == 0:
+            if ep in [50, 100, 150, 200, 250]:
                 self.name = self.name + "_ep_{ep}"
-                self.evaluate(model, CarRacing(), name='eval_'+self.name)
+                with torch.no_grad():
+                    self.evaluate(model, CarRacing(), name='eval_'+self.name)
                 self.save_model(model)
 
         if self.run_wandb: wandb.finish()

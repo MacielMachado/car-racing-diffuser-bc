@@ -57,7 +57,7 @@ if __name__ == '__main__':
     n_epoch_list = [250]
     lrate_list = [1e-4, 1e-5]
     device_list = ["cpu"]
-    n_hidden_list = [128, 256, 512]
+    n_hidden_list = [128, 512]
     batch_size_list = [32, 64]
     n_T_list = [20, 50]
     net_type_list = ["transformer", "fc"]
