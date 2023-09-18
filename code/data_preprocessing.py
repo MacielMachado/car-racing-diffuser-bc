@@ -7,7 +7,8 @@ class DataHandler():
     def __init__(self):
         pass
 
-    def load_data(self, path):
+    @staticmethod
+    def load_data(path):
         return np.load(path).astype('float32')
 
     def append_data(self, array_1, array_2):
@@ -38,7 +39,6 @@ class DataHandler():
             ax[col, row].axis('off')
         plt.show()
 
-
     def green_mask(self, observation):
         
         #convert to hsv
@@ -57,17 +57,13 @@ class DataHandler():
         gray = cv2.cvtColor(observation, cv2.COLOR_RGB2GRAY)
         return gray
     
-
     def blur_image(self, observation):
         blur = cv2.GaussianBlur(observation, (5, 5), 0)
         return blur
-    
 
     def canny_edge_detector(self, observation):
         canny = cv2.Canny(observation, 50, 150)
         return canny
-    
-        
 
     def stack_with_previous(self, images_array):
         images_array = np.expand_dims(images_array, axis=-1)
