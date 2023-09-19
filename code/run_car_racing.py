@@ -19,6 +19,8 @@ class Tester(RecordObservations):
         self.name = name
         self.render = render
         self.device = device
+        self.path = os.getcwd() + '/data/'
+        os.makedirs(self.path, exist_ok=True)
 
     def run(self, run_wandb, name='', gain=1):
         self.name = name
@@ -26,7 +28,7 @@ class Tester(RecordObservations):
             self.config_wandb(project_name="car-racing-diffuser-bc-v2", name=name)
         episode = 0
         reward_list = []          
-        while episode < 100:
+        while episode < 20:
             # np.random.seed(40) # 1
             obs, _ = self.env.reset()
             reward = 0
@@ -41,8 +43,9 @@ class Tester(RecordObservations):
                     torch.Tensor(obs_tensor).type(torch.FloatTensor).to(self.device)
                     )
                 action = self.model.sample(obs_tensor).to(self.device)
+                self.info = [reward, episode]
+                self.save_game()
                 obs, new_reward, done, truncated, _ = self.env.step(action.detach().cpu().numpy()[0]* [1, gain, 1])
-                self.array_to_img(obs, action, frame=counter)
                 reward += new_reward
                 counter += 1
                 print(f"{version} - episode: {episode} - count: {counter} - reward: {reward}")
@@ -53,6 +56,13 @@ class Tester(RecordObservations):
             if run_wandb: wandb.finish()
             episode += 1
             reward_list.append(reward)
+                
+            np.save(self.path+'states_' + str(gain).replace(".", "_") + f'{episode}' + '.npy', 
+                    self.observations)
+            np.save(self.path+'actions_' + str(gain).replace(".", "_") + f'{episode}' + '.npy', 
+                    self.actions)
+
+
         self.scatter_plot_reward(reward_list, gain)
 
     def scatter_plot_reward(self, reward_list):
@@ -81,9 +91,14 @@ class Tester(RecordObservations):
         obs_list = DataHandler().stack_with_previous(obs_list)
         return obs_list
 
+    def save_game(self):
+        '''
+        '''
+        if True:
+            self.actions.append(self.a.copy())
+            self.observations.append(self.s.copy())
+            self.infos.append(self.info.copy())
 
-def get_dim(x, y):
-    pass
 
 if __name__ == '__main__':
     versions = [f for f in os.listdir("experiments") if ('version' in f and '.pkl' not in f)]
