@@ -18,6 +18,7 @@ class RecordObservations():
     def reset_recording(self):
         self.actions = []
         self.observations = []
+        self.infos = []
 
     def save_numpy_array(self, name=''):
         np.save(self.path+'states_'+'.npy', 

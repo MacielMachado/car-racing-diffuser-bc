@@ -19,6 +19,11 @@ class Tester(RecordObservations):
         self.name = name
         self.render = render
         self.device = device
+        self.actions = []
+        self.observations = []
+        self.infos = []
+        self.path = os.getcwd() + '/data/'
+        os.makedirs(self.path, exist_ok=True)
 
     def run(self, run_wandb, name='', gain=1):
         self.name = name
@@ -26,7 +31,7 @@ class Tester(RecordObservations):
             self.config_wandb(project_name="car-racing-diffuser-bc-v2", name=name)
         episode = 0
         reward_list = []          
-        while episode < 100:
+        while episode < 20:
             # np.random.seed(40) # 1
             obs, _ = self.env.reset()
             reward = 0
@@ -41,8 +46,9 @@ class Tester(RecordObservations):
                     torch.Tensor(obs_tensor).type(torch.FloatTensor).to(self.device)
                     )
                 action = self.model.sample(obs_tensor).to(self.device)
+                info = [reward, episode]
+                self.save_game(action.cpu().detach().numpy()[0], obs, info)
                 obs, new_reward, done, truncated, _ = self.env.step(action.detach().cpu().numpy()[0]* [1, gain, 1])
-                self.array_to_img(obs, action, frame=counter)
                 reward += new_reward
                 counter += 1
                 print(f"{version} - episode: {episode} - count: {counter} - reward: {reward}")
@@ -53,9 +59,16 @@ class Tester(RecordObservations):
             if run_wandb: wandb.finish()
             episode += 1
             reward_list.append(reward)
+                
+            np.save(self.path+'states_' + str(gain).replace(".", "_") + '_' + f'{episode}' + '.npy', 
+                    self.observations)
+            np.save(self.path+'actions_' + str(gain).replace(".", "_") + '_' +  f'{episode}' + '.npy', 
+                    self.actions)
+
+
         self.scatter_plot_reward(reward_list, gain)
 
-    def scatter_plot_reward(self, reward_list):
+    def scatter_plot_reward(self, reward_list, gain):
         plt.subplot()
         plt.scatter(range(len(reward_list)), reward_list)
         plt.axhline(y=900, color='r', linestyle='--', linewidth=2)
@@ -81,21 +94,25 @@ class Tester(RecordObservations):
         obs_list = DataHandler().stack_with_previous(obs_list)
         return obs_list
 
+    def save_game(self, action, obs, info):
+        '''
+        '''
+        if True:
+            self.actions.append(action)
+            self.observations.append(obs)
+            self.infos.append(info)
 
-def get_dim(x, y):
-    pass
 
 if __name__ == '__main__':
-    versions = [f for f in os.listdir("experiments") if ('version' in f and '.pkl' not in f)]
     versions = ["version_3", "version_4"]
-    gains = [5, 4.5, 4, 3.5, 3, 1, 5.5]
+    gains = [4, 4.5, 5.5, 3.5, 3, 1, 5.5]
     for gain in gains:
         for version in sorted(versions):
             params = Params("experiments/" + version + "/params.json")
 
             n_epoch = params.n_epoch
             lrate = params.lrate
-            device = "mps"
+            device = "cpu"
             n_hidden = params.n_hidden
             batch_size = params.batch_size
             n_T = params.n_T

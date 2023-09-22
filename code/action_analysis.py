@@ -31,7 +31,7 @@ class ActionsAnalyzer(DataHandler):
 
         # Separe as três dimensões do array
         dim1 = actions[:, 0]
-        dim2 = actions[:, 1]
+        dim2 = actions[:, 1]*4.5
         dim3 = actions[:, 2]
 
         # Plote os histogramas
@@ -57,6 +57,6 @@ class ActionsAnalyzer(DataHandler):
 
 
 if __name__ == '__main__':
-    analyzer = ActionsAnalyzer(path='tutorial_2/actions_expert.npy')
+    analyzer = ActionsAnalyzer(path='data/actions_4_5_20.npy')
     actions = analyzer.load_action()
     analyzer.make_histograms(actions)

@@ -4,10 +4,12 @@ __pycache__/
 *$py.class
 
 # Dataset
+ppo_dataset
 tutorial
 tutorial_*
 frame
 experiments
+data
 
 # Models
 *.pkl
