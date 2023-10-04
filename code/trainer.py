@@ -20,7 +20,8 @@ class Trainer():
     def __init__(self, n_epoch, lrate, device, n_hidden, batch_size, n_T,
                  net_type, drop_prob, extra_diffusion_steps, embed_dim,
                  guide_w, betas, dataset_path, run_wandb, record_run,
-                 name='', param_search=False, embedding="Model_cnn_BC"):
+                 name='', param_search=False, embedding="Model_cnn_mlp",
+                 dataset_origin="human"):
         self.n_epoch = n_epoch
         self.lrate = lrate
         self.device = device
@@ -39,10 +40,11 @@ class Trainer():
         self.run_wandb = run_wandb
         self.record_rum = record_run
         self.embedding = embedding
+        self.dataset_origin = dataset_origin
 
     def main(self):
         if self.run_wandb:
-            self.config_wandb(project_name="car-racing-diffuser-bc-v2", name=self.name)
+            self.config_wandb(project_name="car-racing-diffuser-bc-human", name=self.name)
         torch_data_train, dataload_train = self.prepare_dataset()
         x_dim, y_dim = self.get_x_and_y_dim(torch_data_train)
         conv_model = self.create_conv_model(x_dim, y_dim)
@@ -67,7 +69,8 @@ class Trainer():
                 "drop_prob": self.drop_prob,
                 "extra_diffusion_steps": self.extra_diffusion_steps,
                 "embed_dim": self.embed_dim,
-                "guide_w": self.guide_w
+                "guide_w": self.guide_w,
+                "dataset": self.dataset_path,
             }
         if name != '':
             return wandb.init(project=project_name, name=name, config=config)
@@ -76,7 +79,8 @@ class Trainer():
     def prepare_dataset(self):
         tf = transforms.Compose([])
         torch_data_train = CarRacingCustomDataset(
-            self.dataset_path, transform=tf, train_or_test='train', train_prop=0.90
+            self.dataset_path, transform=tf, train_or_test='train', train_prop=1.0,
+            dataset_origin=self.dataset_origin
         )
         dataload_train = DataLoader(
             torch_data_train, batch_size=self.batch_size, shuffle=False, num_workers=0
@@ -101,6 +105,8 @@ class Trainer():
             return Model_cnn_mlp(x_dim, self.n_hidden, y_dim,
                                 embed_dim=self.embed_dim,
                                 net_type=self.net_type).to(self.device)
+        else:
+            raise NotImplementedError
     
     def create_agent_model(self, conv_model, x_dim, y_dim):
         return Model_Cond_Diffusion(
@@ -157,15 +163,18 @@ class Trainer():
                             "right_action_MSE": action_MSE[2]})
                     
                 results_ep.append(loss_ep / n_batch)
-            
-        self.save_model(model)
+        
+        if ep in [40, 80, 150, 250, 500, 1000, 1500, 2000]:
+            name=f'/model_novo_ep_{ep}'
+            self.save_model(model, name)
+            self.evaluate(model, CarRacing(), name='eval_'+name)
         if self.run_wandb: wandb.finish()
         
         return model
 
-    def save_model(self, model):
+    def save_model(self, model, name):
         if self.param_search == False:
-            return torch.save(model.state_dict(), os.getcwd()+'/model_novo_bc.pkl')
+            return torch.save(model.state_dict(), os.getcwd()+name+'.pkl')
         return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):
@@ -196,5 +205,6 @@ if __name__ == '__main__':
                                 name='trainer_400',
                                 run_wandb=False,
                                 record_run=False,
-                                embedding=params.embedding)
+                                embedding=params.embedding,
+                                dataset_origin="human")
     trainer_instance.main()

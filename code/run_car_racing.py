@@ -28,10 +28,10 @@ class Tester(RecordObservations):
     def run(self, run_wandb, name='', gain=1):
         self.name = name
         if run_wandb:
-            self.config_wandb(project_name="car-racing-diffuser-bc-v2", name=name)
+            self.config_wandb(project_name="car-racing-diffuser-bc-human-eval", name=name)
         episode = 0
-        reward_list = []          
-        while episode < 20:
+        reward_list = []        
+        while episode < 1:
             # np.random.seed(40) # 1
             obs, _ = self.env.reset()
             reward = 0

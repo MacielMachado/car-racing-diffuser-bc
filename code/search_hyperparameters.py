@@ -9,8 +9,10 @@ PYTHON = sys.executable
 parser = argparse.ArgumentParser()
 parser.add_argument('--parent_dir', default='experiments/',
                     help='Directory containing params.json')
-parser.add_argument('--data_dir', default='dataset_fixed/',
+parser.add_argument('--data_dir', default='/home/bruno/git/datasets/car-racing/human_dataset/dataset_1',
                     help='Directory containing the dataset')
+parser.add_argument('--data_origin', default='human',
+                    help='Inform if the data is from a "human" expert or a "ppo" expert')
 
 def launch_training_job(parent_dir, data_dir, job_name, params):
     """Launch training of the model with a set of hyperparameters in parent_dir/job_name
@@ -45,7 +47,9 @@ def launch_training_job(parent_dir, data_dir, job_name, params):
                                name=job_name,
                                param_search=True,
                                run_wandb=True,
-                               record_run=True)
+                               record_run=True,
+                               embedding=params.embedding,
+                               dataset_origin=args.data_origin)
     trainer_instance.main()
    
 
@@ -54,18 +58,18 @@ if __name__ == '__main__':
     json_path = os.path.join(args.parent_dir, 'default/params.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
 
-    n_epoch_list = [40, 80, 150, 250, 500]
+    n_epoch_list = [2000]
     lrate_list = [1e-4, 1e-5]
     device_list = ["cuda"]
-    n_hidden_list = [128, 256, 512]
-    batch_size_list = [32, 64, 512]
-    n_T_list = [20, 50, 75]
-    net_type_list = ["transformer", "fc"]
+    n_hidden_list = [128, 512]
+    batch_size_list = [32, 512]
+    n_T_list = [20]
+    net_type_list = ["transformer"]
     drop_prob_list = [0.0]
     extra_diffusion_steps_list = [16]
     embed_dim_list = [128]
     guide_w_list = [0.0]
-    betas_list = [[1e-4, 0.02], [1e-4, 0.9]]
+    betas_list = [[1e-4, 0.02]]
 
     params_list = np.array(np.meshgrid(n_epoch_list,
                                        lrate_list,

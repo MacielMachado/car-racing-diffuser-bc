@@ -87,3 +87,35 @@ class DataHandler():
                 ], axis=-1)
 
         return stacked_images
+    
+    def __preprocess_ppo_images(self, images_array):
+        images = images_array[:,-1,:,:]
+        images = DataHandler().normalizing(images)
+        images = DataHandler().stack_with_previous(images)
+        return images
+    
+    def __preprocess_human_images(self, images_array):
+        images = DataHandler().to_greyscale(images_array)
+        images = DataHandler().normalizing(images)
+        images = DataHandler().stack_with_previous(images)
+        return images
+    
+    def preprocess_images(self, images_array, origin: str):
+        if origin == 'ppo':
+            return self.__preprocess_ppo_images(images_array)
+        if origin == 'human':
+            return self.__preprocess_human_images(images_array)
+        raise NotImplementedError
+    
+    def preprocess_actions(self, actions_array, origin):
+        if origin == 'ppo':
+            return  self.preprocess_ppo_actions(actions_array)
+        if origin == 'human':
+            return actions_array
+        raise NotImplementedError
+        
+    def preprocess_ppo_actions(self, actions_array):
+        steering_dim = actions_array[:,0]
+        gas_dim = [val if val > 0 else 0 for val in actions_array[:,1]]
+        brake_dim = [val if val < 0 else 0 for val in actions_array[:,1]]
+        return np.array([steering_dim, gas_dim, brake_dim]).T

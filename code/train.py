@@ -136,11 +136,12 @@ class ClawCustomDataset(Dataset):
 
 class CarRacingCustomDataset(Dataset):
     def __init__(
-        self, DATASET_PATH, transform=None, train_or_test="train", train_prop=0.9
+        self, DATASET_PATH, transform=None, train_or_test="train", train_prop=0.9,
+        dataset_origin="human"
     ):
         self.DATASET_PATH = DATASET_PATH
-        self.image_all = np.load(os.path.join(DATASET_PATH, "TRAIN/states_TRAIN.npy"), allow_pickle=True)
-        self.action_all = np.load(os.path.join(DATASET_PATH, "TRAIN/actions_TRAIN.npy"), allow_pickle=True)
+        self.image_all = np.load(os.path.join(DATASET_PATH, "states.npy"), allow_pickle=True)
+        self.action_all = np.load(os.path.join(DATASET_PATH, "actions.npy"), allow_pickle=True)
         self.transform = transform
         n_train = int(self.image_all.shape[0] * train_prop)
         if train_or_test == "train":
@@ -153,12 +154,13 @@ class CarRacingCustomDataset(Dataset):
             raise NotImplementedError
         
         # to grey scale and normalizing
-        all_images = []
-        self.image_all = DataHandler().to_greyscale(self.image_all)
-        self.image_all = DataHandler().normalizing(self.image_all)
-        self.image_all = DataHandler().stack_with_previous(self.image_all)
-        self.image_all = self.image_all[90:]
-        self.action_all = self.action_all[90:]
+        self.image_all = DataHandler().preprocess_images(self.image_all, dataset_origin)
+        self.action_all = DataHandler().preprocess_actions(self.action_all, dataset_origin)
+        # self.image_all = DataHandler().to_greyscale(self.image_all)
+        # self.image_all = DataHandler().normalizing(self.image_all)
+        # self.image_all = DataHandler().stack_with_previous(self.image_all)
+        self.image_all = self.image_all
+        self.action_all = self.action_all
 
     def __len__(self):
         return self.image_all.shape[0]
