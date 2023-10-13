@@ -9,7 +9,7 @@ PYTHON = sys.executable
 parser = argparse.ArgumentParser()
 parser.add_argument('--parent_dir', default='experiments/',
                     help='Directory containing params.json')
-parser.add_argument('--data_dir', default='/home/bruno/git/datasets/car-racing/human_dataset/dataset_1',
+parser.add_argument('--data_dir', default='/home/casa/projects/bruno/datasets/car-racing/human_dataset/tutorial_human_expert_0_h20',
                     help='Directory containing the dataset')
 parser.add_argument('--data_origin', default='human',
                     help='Inform if the data is from a "human" expert or a "ppo" expert')
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     json_path = os.path.join(args.parent_dir, 'default/params.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
 
-    n_epoch_list = [2000]
+    n_epoch_list = [750]
     lrate_list = [1e-4, 1e-5]
     device_list = ["cuda"]
     n_hidden_list = [128, 512]

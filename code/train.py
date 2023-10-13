@@ -156,9 +156,6 @@ class CarRacingCustomDataset(Dataset):
         # to grey scale and normalizing
         self.image_all = DataHandler().preprocess_images(self.image_all, dataset_origin)
         self.action_all = DataHandler().preprocess_actions(self.action_all, dataset_origin)
-        # self.image_all = DataHandler().to_greyscale(self.image_all)
-        # self.image_all = DataHandler().normalizing(self.image_all)
-        # self.image_all = DataHandler().stack_with_previous(self.image_all)
         self.image_all = self.image_all
         self.action_all = self.action_all
 

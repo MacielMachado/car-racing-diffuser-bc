@@ -25,7 +25,28 @@ class Tester(RecordObservations):
         self.path = os.getcwd() + '/data/'
         os.makedirs(self.path, exist_ok=True)
 
-    def run(self, run_wandb, name='', gain=1):
+    def run_trainer(self):      
+        obs, _ = self.env.reset()
+        reward = 0
+        counter=0
+        done = False
+        truncated = False
+        while counter < 1000:
+            self.model.eval()
+            obs_tensor = self.preprocess_obs(obs)
+            torch.from_numpy(obs_tensor).float().to(self.device).shape
+            obs_tensor = (torch.Tensor(obs_tensor).type(torch.FloatTensor).to(self.device))
+            action = self.model.sample(obs_tensor).to(self.device)
+            obs, new_reward, done, truncated, _ = self.env.step(action.detach().cpu().numpy()[0])
+            reward += new_reward
+            counter += 1
+            print(f"count: {counter} - reward: {reward}")
+            if done or truncated: 
+                break
+        return reward
+
+
+    def run(self, run_wandb, name='', gain=1, save=False):
         self.name = name
         if run_wandb:
             self.config_wandb(project_name="car-racing-diffuser-bc-human-eval", name=name)
@@ -47,7 +68,7 @@ class Tester(RecordObservations):
                     )
                 action = self.model.sample(obs_tensor).to(self.device)
                 info = [reward, episode]
-                self.save_game(action.cpu().detach().numpy()[0], obs, info)
+                if save: self.save_game(action.cpu().detach().numpy()[0], obs, info)
                 obs, new_reward, done, truncated, _ = self.env.step(action.detach().cpu().numpy()[0]* [1, gain, 1])
                 reward += new_reward
                 counter += 1
@@ -59,14 +80,18 @@ class Tester(RecordObservations):
             if run_wandb: wandb.finish()
             episode += 1
             reward_list.append(reward)
-                
-            np.save(self.path+'states_' + str(gain).replace(".", "_") + '_' + f'{episode}' + '.npy', 
+
+            if save:
+                np.save(
+                    self.path+'states_' + str(gain).replace(".", "_") + '_' + f'{episode}' + '.npy', 
                     self.observations)
-            np.save(self.path+'actions_' + str(gain).replace(".", "_") + '_' +  f'{episode}' + '.npy', 
+                np.save(
+                    self.path+'actions_' + str(gain).replace(".", "_") + '_' +  f'{episode}' + '.npy', 
                     self.actions)
 
-
-        self.scatter_plot_reward(reward_list, gain)
+        if save:
+            self.scatter_plot_reward(reward_list, gain)
+        return reward
 
     def scatter_plot_reward(self, reward_list, gain):
         plt.subplot()

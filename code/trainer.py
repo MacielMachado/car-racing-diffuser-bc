@@ -53,9 +53,12 @@ class Trainer():
         model = self.train(model, dataload_train, optim)
         self.evaluate(model, CarRacing(), name='eval_'+self.name)
         
-    def evaluate(self, model, env, name):
+    def evaluate(self, model, env, name, middle):
         tester = Tester(model, env, render=True, device=self.device)
-        tester.run(run_wandb=self.run_wandb, name=name)
+        if middle:
+            return tester.run_trainer()
+        else:
+            tester.run()
 
     def config_wandb(self, project_name, name):
         config={
@@ -164,11 +167,14 @@ class Trainer():
                     
                 results_ep.append(loss_ep / n_batch)
         
-        if ep in [40, 80, 150, 250, 500, 1000, 1500, 2000]:
-            name=f'/model_novo_ep_{ep}'
-            self.save_model(model, name)
-            self.evaluate(model, CarRacing(), name='eval_'+name)
-        if self.run_wandb: wandb.finish()
+            if ep in [40, 80, 150, 250, 500]:
+                name=f'/model_novo_ep_{ep}'
+                self.save_model(model, name)
+                reward = self.evaluate(model, CarRacing(), name='eval_'+name, middle=True)
+                wandb.log({"reward": reward})
+
+        if self.run_wandb:
+            wandb.finish()
         
         return model
 
