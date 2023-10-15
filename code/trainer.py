@@ -41,6 +41,9 @@ class Trainer():
         self.record_rum = record_run
         self.embedding = embedding
         self.dataset_origin = dataset_origin
+        self.best_reward = float('-inf')
+        self.patience = 20
+        self.early_stopping_counter = 0
 
     def main(self):
         if self.run_wandb:
@@ -51,7 +54,8 @@ class Trainer():
         model = self.create_agent_model(conv_model, x_dim, y_dim)
         optim = self.create_optimizer(model)
         model = self.train(model, dataload_train, optim)
-        self.evaluate(model, CarRacing(), name='eval_'+self.name)
+        with torch.no_grad():
+            self.evaluate(model.eval(), CarRacing(), name='eval_'+self.name)
         
     def evaluate(self, model, env, name, middle):
         tester = Tester(model, env, render=True, device=self.device)
@@ -61,6 +65,7 @@ class Trainer():
             tester.run()
 
     def config_wandb(self, project_name, name):
+        wandb.login(key='9bcc371f01af2fc8ddab2c3ad226caad57dc4ac5')
         config={
                 "n_epoch": self.n_epoch,
                 "lrate": self.lrate,
@@ -166,21 +171,43 @@ class Trainer():
                             "right_action_MSE": action_MSE[2]})
                     
                 results_ep.append(loss_ep / n_batch)
-        
+            
+            if ep % 10 == 0:
+                stop = self.early_stopping(model, ep)
+                if stop:
+                    break
+
             if ep in [40, 80, 150, 250, 500]:
-                name=f'/model_novo_ep_{ep}'
+                name=f'model_novo_ep_{ep}'
                 self.save_model(model, name)
-                reward = self.evaluate(model, CarRacing(), name='eval_'+name, middle=True)
-                wandb.log({"reward": reward})
 
         if self.run_wandb:
             wandb.finish()
         
         return model
+    
+    def early_stopping(self, model, ep):
+        with torch.no_grad():
+            reward = self.evaluate(model.eval(), CarRacing(), name=self.name+'_eval', middle=True)
+        wandb.log({"reward": reward})
+        if reward > self.best_reward:
+            self.best_reward = reward
+            self.counter = 0
+            name=self.name+'_model_best_reward'
+            self.save_model(model, name)
+        else:
+            self.counter += 1
+        stop = False
+
+        if self.counter >= self.patience:
+            print(f'Early stopping after {ep+1} epochs without improvement.')
+            stop = True
+        return stop 
+
 
     def save_model(self, model, name):
-        if self.param_search == False:
-            return torch.save(model.state_dict(), os.getcwd()+name+'.pkl')
+        if self.param_search == True:
+            return torch.save(model.state_dict(), os.path.join(os.getcwd(),name+'.pkl'))
         return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):
