@@ -119,3 +119,31 @@ class DataHandler():
         gas_dim = [val if val > 0 else 0 for val in actions_array[:,1]]
         brake_dim = [val if val < 0 else 0 for val in actions_array[:,1]]
         return np.array([steering_dim, gas_dim, brake_dim]).T
+
+
+class DatasetHandler():
+    def __init__(self):
+        pass
+
+    @classmethod
+    def subdivide_array(self, array, division_indices, highest_values):
+        # Inicialize uma lista vazia para armazenar os subitens
+        subitems = np.array([])
+        division_indices = [0] + division_indices
+        # Itere sobre os índices em B para criar os subitens
+        for i in range(0, len(division_indices) - 1):
+            start_index = division_indices[i]
+            end_index = division_indices[i+1]
+            subitem = array[start_index:end_index]
+            if division_indices[i] in highest_values:
+                if len(subitems) == 0:
+                    subitems = subitem
+                    continue
+                subitems = np.append(subitems, subitem, axis=0)
+        return subitems
+    
+    @classmethod
+    def highest_scores(self, rewards, num_ele):
+        indices = np.argpartition(rewards[:,1], -num_ele)[-num_ele:]
+        highest_rewards = rewards[indices]
+        return highest_rewards
