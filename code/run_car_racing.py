@@ -37,7 +37,7 @@ class Tester(RecordObservations):
             torch.from_numpy(obs_tensor).float().to(self.device).shape
             obs_tensor = (torch.Tensor(obs_tensor).type(torch.FloatTensor).to(self.device))
             action = self.model.sample(obs_tensor).to(self.device)
-            obs, new_reward, done, truncated, _ = self.env.step(action.detach().cpu().numpy()[0])
+            obs, new_reward, done, truncated, _ = self.env.step(action.detach().numpy()[0])
             reward += new_reward
             counter += 1
             print(f"count: {counter} - reward: {reward}")
@@ -72,7 +72,7 @@ class Tester(RecordObservations):
                 obs, new_reward, done, truncated, _ = self.env.step(action.detach().cpu().numpy()[0]* [1, gain, 1])
                 reward += new_reward
                 counter += 1
-                print(f"{version} - episode: {episode} - count: {counter} - reward: {reward}")
+                print(f"{version} - episode: {episode} - count: {counter} - reward: {reward} - reward_list: {reward_list} - gain: {gain}")
                 if done or truncated: 
                     break
                 if run_wandb:
@@ -101,7 +101,7 @@ class Tester(RecordObservations):
         plt.ylabel("Reward")
         plt.xlabel("Episode")
         plt.grid()
-        path = "experiments/"+self.name+"/"
+        path = "experiments/scatter/"+self.name+"/"
         os.makedirs(path, exist_ok=True)
         plt.savefig(path+self.name+"_scatter_fixed_"+str(gain).replace(".", "_")+".png")
         plt.close()
@@ -129,7 +129,7 @@ class Tester(RecordObservations):
 
 
 if __name__ == '__main__':
-    versions_path = "/Users/brunomaciel/Desktop/human-models/"
+    versions_path = "experiments/"
     version_numbers = [0, 1, 2, 3, 8, 9, 10, 11]
     # versions = ["version_3", "version_4"]
     gains = [4, 4.5, 5.5, 3.5, 3, 1, 5.5]
@@ -140,7 +140,7 @@ if __name__ == '__main__':
 
             n_epoch = params.n_epoch
             lrate = params.lrate
-            device = "mps"
+            device = "cuda"
             n_hidden = params.n_hidden
             batch_size = params.batch_size
             n_T = params.n_T
@@ -168,7 +168,7 @@ if __name__ == '__main__':
 
             # model.load_state_dict(torch.load("model_casa2.pkl"))
             model.load_state_dict(torch.load(name + "_model_best_reward.pkl",
-                                map_location=torch.device('mps')))
+                                map_location=torch.device('cuda')))
 
             stop = 1
             tester = Tester(model, env, render=True, device=device)
