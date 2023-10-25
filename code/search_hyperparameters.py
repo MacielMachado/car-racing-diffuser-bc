@@ -63,7 +63,7 @@ if __name__ == '__main__':
     device_list = ["cuda"]
     n_hidden_list = [128, 512]
     batch_size_list = [32, 512]
-    n_T_list = [20]
+    n_T_list = [20, 50]
     net_type_list = ["transformer"]
     drop_prob_list = [0.0]
     extra_diffusion_steps_list = [16]
