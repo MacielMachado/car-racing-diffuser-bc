@@ -942,7 +942,7 @@ class ResidualConvBlock(nn.Module):
 
 
 class Model_cnn_mlp(nn.Module):
-    def __init__(self, x_shape, n_hidden, y_dim, embed_dim, net_type, output_dim=None):
+    def __init__(self, x_shape, n_hidden, y_dim, embed_dim, net_type, output_dim=None, cnn_out_dim=1152):
         super(Model_cnn_mlp, self).__init__()
 
         self.x_shape = x_shape
@@ -968,8 +968,8 @@ class Model_cnn_mlp(nn.Module):
         )
         self.imageembed = nn.Sequential(nn.AvgPool2d(8))
 
-        cnn_out_dim = self.n_feat * 2  # how many features after flattening -- WARNING, will have to adjust this for diff size input resolution
-        cnn_out_dim = 1152
+        # cnn_out_dim = self.n_feat * 2  # how many features after flattening -- WARNING, will have to adjust this for diff size input resolution
+        cnn_out_dim = cnn_out_dim
         # it is the flattened size after CNN layers, and average pooling
 
         # then once have flattened vector out of CNN, just feed into previous Model_mlp_diff_embed

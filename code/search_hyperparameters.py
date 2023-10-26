@@ -9,9 +9,9 @@ PYTHON = sys.executable
 parser = argparse.ArgumentParser()
 parser.add_argument('--parent_dir', default='experiments/',
                     help='Directory containing params.json')
-parser.add_argument('--data_dir', default='/home/casa/projects/bruno/datasets/car-racing/human_dataset/tutorial_human_expert_0_h20',
+parser.add_argument('--data_dir', default='/home/casa/projects/bruno/datasets/car-racing/ppo_dataset/tutorial_ppo_expert_68',
                     help='Directory containing the dataset')
-parser.add_argument('--data_origin', default='human',
+parser.add_argument('--data_origin', default='ppo',
                     help='Inform if the data is from a "human" expert or a "ppo" expert')
 
 def launch_training_job(parent_dir, data_dir, job_name, params):
