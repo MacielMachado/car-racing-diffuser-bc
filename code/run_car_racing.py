@@ -25,7 +25,7 @@ class Tester(RecordObservations):
         self.path = os.getcwd() + '/data/'
         os.makedirs(self.path, exist_ok=True)
 
-    def run_trainer(self):      
+    def run_trainer(self, dataset_origin="human"):      
         obs, _ = self.env.reset()
         reward = 0
         counter=0
@@ -33,11 +33,13 @@ class Tester(RecordObservations):
         truncated = False
         while counter < 1000:
             self.model.eval()
+            if dataset_origin == "ppo":
+                obs = obs[0:84, 0:84, :]
             obs_tensor = self.preprocess_obs(obs)
             torch.from_numpy(obs_tensor).float().to(self.device).shape
             obs_tensor = (torch.Tensor(obs_tensor).type(torch.FloatTensor).to(self.device))
             action = self.model.sample(obs_tensor).to(self.device)
-            obs, new_reward, done, truncated, _ = self.env.step(action.detach().numpy()[0])
+            obs, new_reward, done, truncated, _ = self.env.step(action.cpu().detach().numpy()[0])
             reward += new_reward
             counter += 1
             print(f"count: {counter} - reward: {reward}")
@@ -46,7 +48,7 @@ class Tester(RecordObservations):
         return reward
 
 
-    def run(self, run_wandb, name='', gain=1, save=False):
+    def run(self, run_wandb, name='', gain=1, save=False, dataset_origin="human"):
         self.name = name
         if run_wandb:
             self.config_wandb(project_name="car-racing-diffuser-bc-human-eval", name=name)
@@ -61,6 +63,8 @@ class Tester(RecordObservations):
             truncated = False
             while counter < 1000:
                 self.model.eval()
+                if dataset_origin == "ppo":
+                    obs = obs[0:84, 0:84, :]
                 obs_tensor = self.preprocess_obs(obs)
                 torch.from_numpy(obs_tensor).float().to(self.device).shape
                 obs_tensor = (
@@ -72,7 +76,11 @@ class Tester(RecordObservations):
                 obs, new_reward, done, truncated, _ = self.env.step(action.detach().cpu().numpy()[0]* [1, gain, 1])
                 reward += new_reward
                 counter += 1
-                print(f"{version} - episode: {episode} - count: {counter} - reward: {reward} - reward_list: {reward_list} - gain: {gain}")
+                if reward_list == []:
+                    reward_list_mean = 0
+                else:
+                    reward_list_mean = np.mean(np.array(reward_list))
+                print(f"{version} - episode: {episode} - count: {counter} - reward: {reward:.2f} - reward_list mean: {reward_list_mean:.2f} - gain: {gain}")
                 if done or truncated: 
                     break
                 if run_wandb:
@@ -175,7 +183,8 @@ if __name__ == '__main__':
             try:
                 tester.run(run_wandb=False,
                            name="version_" + str(version),
-                           gain=gain)
+                           gain=gain,
+                           save=True)
             except Exception as exception:
                 print("---------------------------------------------------")
                 print(f"The {version} couldn't be trained due to ")

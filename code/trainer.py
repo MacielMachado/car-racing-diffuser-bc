@@ -47,7 +47,7 @@ class Trainer():
 
     def main(self):
         if self.run_wandb:
-            self.config_wandb(project_name="car-racing-diffuser-bc-human", name=self.name)
+            self.config_wandb(project_name="car-racing-diffuser-bc-ppo", name=self.name)
         torch_data_train, dataload_train = self.prepare_dataset()
         x_dim, y_dim = self.get_x_and_y_dim(torch_data_train)
         conv_model = self.create_conv_model(x_dim, y_dim)
@@ -60,7 +60,7 @@ class Trainer():
     def evaluate(self, model, env, name, middle):
         tester = Tester(model, env, render=True, device=self.device)
         if middle:
-            return tester.run_trainer()
+            return tester.run_trainer(self.dataset_origin)
         else:
             tester.run()
 
@@ -105,6 +105,12 @@ class Trainer():
         return x_dim, y_dim
     
     def create_conv_model(self, x_dim, y_dim):
+
+        if self.dataset_origin == 'ppo':
+            cnn_out_dim = 512
+        else:
+            cnn_out_dim = 1152
+
         if self.embedding == "Model_cnn_bc":
             return Model_cnn_bc(self.n_hidden, y_dim,
                                 embed_dim=self.embed_dim,
@@ -112,7 +118,8 @@ class Trainer():
         elif self.embedding == "Model_cnn_mlp":
             return Model_cnn_mlp(x_dim, self.n_hidden, y_dim,
                                 embed_dim=self.embed_dim,
-                                net_type=self.net_type).to(self.device)
+                                net_type=self.net_type,
+                                cnn_out_dim=cnn_out_dim).to(self.device)
         else:
             raise NotImplementedError
     
