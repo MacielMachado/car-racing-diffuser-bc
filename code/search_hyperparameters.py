@@ -58,13 +58,20 @@ if __name__ == '__main__':
     json_path = os.path.join(args.parent_dir, 'default/params.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
 
+    data_dir_list = [r'Datasets/human/tutorial_human_expert_0/',
+                     r'Datasets/human/tutorial_human_expert_0_top_20/',
+                     r'Datasets/human/tutorial_human_expert_1/',
+                     r'Datasets/human/tutorial_human_expert_2/',
+                     r'Datasets/ppo/tutorial_ppo_expert_66/',
+                     r'Datasets/ppo/tutorial_ppo_expert_68/',
+                     ]
     n_epoch_list = [750]
     lrate_list = [1e-4, 1e-5]
-    device_list = ["cuda"]
+    device_list = ["mps"]
     n_hidden_list = [128, 512]
     batch_size_list = [32, 512]
     n_T_list = [20, 50]
-    net_type_list = ["transformer"]
+    net_type_list = ["transformer", "fc"]
     drop_prob_list = [0.0]
     extra_diffusion_steps_list = [16]
     embed_dim_list = [128]
@@ -81,7 +88,8 @@ if __name__ == '__main__':
                                        drop_prob_list,
                                        extra_diffusion_steps_list,
                                        embed_dim_list,
-                                       guide_w_list)).T.reshape(-1, 11)
+                                       guide_w_list,
+                                       data_dir_list)).T.reshape(-1, 11)
     
     params = utils.Params(json_path)
 

@@ -10,6 +10,8 @@ tutorial_*
 frame
 experiments
 data
+TRAIN
+ppo-models
 
 # Models
 *.pkl

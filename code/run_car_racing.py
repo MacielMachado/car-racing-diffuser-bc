@@ -135,10 +135,10 @@ class Tester(RecordObservations):
             self.observations.append(obs)
             self.infos.append(info)
 
-
 if __name__ == '__main__':
     versions_path = "experiments/"
     version_numbers = [0, 1, 2, 3, 8, 9, 10, 11]
+    version_numbers = [3, 4]
     # versions = ["version_3", "version_4"]
     gains = [4, 4.5, 5.5, 3.5, 3, 1, 5.5]
     for gain in gains:
@@ -148,7 +148,7 @@ if __name__ == '__main__':
 
             n_epoch = params.n_epoch
             lrate = params.lrate
-            device = "cuda"
+            device = "mps"
             n_hidden = params.n_hidden
             batch_size = params.batch_size
             n_T = params.n_T
@@ -175,8 +175,8 @@ if __name__ == '__main__':
                 guide_w=0.0,)
 
             # model.load_state_dict(torch.load("model_casa2.pkl"))
-            model.load_state_dict(torch.load(name + "_model_best_reward.pkl",
-                                map_location=torch.device('cuda')))
+            model.load_state_dict(torch.load(name + "/" + "version_" + str(version) + ".pkl",
+                                map_location=torch.device('mps')))
 
             stop = 1
             tester = Tester(model, env, render=True, device=device)
