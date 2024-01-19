@@ -14,7 +14,7 @@ parser.add_argument('--data_dir', default='/home/casa/projects/bruno/datasets/ca
 parser.add_argument('--data_origin', default='ppo',
                     help='Inform if the data is from a "human" expert or a "ppo" expert')
 
-def launch_training_job(parent_dir, data_dir, job_name, params):
+def launch_training_job(parent_dir, data_dir, job_name, params, dataset_origin):
     """Launch training of the model with a set of hyperparameters in parent_dir/job_name
 
     Args:
@@ -49,7 +49,7 @@ def launch_training_job(parent_dir, data_dir, job_name, params):
                                run_wandb=True,
                                record_run=True,
                                embedding=params.embedding,
-                               dataset_origin=args.data_origin)
+                               dataset_origin=dataset_origin)
     trainer_instance.main()
    
 
@@ -58,9 +58,7 @@ if __name__ == '__main__':
     json_path = os.path.join(args.parent_dir, 'default/params.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
 
-    data_dir_list = [r'Datasets/human/tutorial_human_expert_0/',
-                     r'Datasets/human/tutorial_human_expert_0_top_20/',
-                     r'Datasets/human/tutorial_human_expert_1/',
+    data_dir_list = [r'Datasets/human/tutorial_human_expert_1/',
                      r'Datasets/human/tutorial_human_expert_2/',
                      r'Datasets/ppo/tutorial_ppo_expert_66/',
                      r'Datasets/ppo/tutorial_ppo_expert_68/',
@@ -78,18 +76,19 @@ if __name__ == '__main__':
     guide_w_list = [0.0]
     betas_list = [[1e-4, 0.02]]
 
-    params_list = np.array(np.meshgrid(n_epoch_list,
-                                       lrate_list,
-                                       device_list,
-                                       n_hidden_list,
-                                       batch_size_list,
-                                       n_T_list,
-                                       net_type_list,
-                                       drop_prob_list,
-                                       extra_diffusion_steps_list,
-                                       embed_dim_list,
-                                       guide_w_list,
-                                       data_dir_list)).T.reshape(-1, 11)
+    params_grid = np.meshgrid(n_epoch_list,
+                             lrate_list,
+                             device_list,
+                             n_hidden_list,
+                             batch_size_list,
+                             n_T_list,
+                             net_type_list,
+                             drop_prob_list,
+                             extra_diffusion_steps_list,
+                             embed_dim_list,
+                             guide_w_list,
+                             data_dir_list)
+    params_list = np.array(params_grid).T.reshape(-1, len(params_grid))
     
     params = utils.Params(json_path)
 
@@ -105,14 +104,18 @@ if __name__ == '__main__':
         params.extra_diffusion_steps=int(item[8])
         params.embed_dim=int(item[9])
         params.guide_w=float(item[10])
-        job_name = f"version_{index}"
+        job_name = str(item[11]).split(os.sep)[2]+f"_version_{index}"
         model_dir = os.path.join(args.parent_dir, job_name)
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
         utils.set_logger(os.path.join(args.parent_dir, job_name, 'train.log'))
         
         try:
-            launch_training_job(args.parent_dir, args.data_dir, job_name, params)
+            launch_training_job(args.parent_dir,
+                                str(item[11]),
+                                job_name,
+                                params,
+                                str(item[11]).split(os.sep)[1])
             
         except Exception as exception:
             print("---------------------------------------------------")
