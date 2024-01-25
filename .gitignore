@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# General Files
+*.json
+
 # Dataset
 ppo_dataset
 tutorial

@@ -58,11 +58,12 @@ if __name__ == '__main__':
     json_path = os.path.join(args.parent_dir, 'default/params.json')
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
 
-    data_dir_list = [r'Datasets/human/tutorial_human_expert_1/',
-                     r'Datasets/human/tutorial_human_expert_2/',
-                     r'Datasets/ppo/tutorial_ppo_expert_66/',
-                     r'Datasets/ppo/tutorial_ppo_expert_68/',
-                     ]
+    # data_dir_list = [r'Datasets/human/tutorial_human_expert_1/',
+    #                  r'Datasets/human/tutorial_human_expert_2/',
+    #                  r'Datasets/human/tutorial_human_expert_0_top_20',
+    #                  r'Datasets/ppo/tutorial_ppo_expert_68/',]
+
+    data_dir_list = [r'Datasets/ppo/tutorial_ppo_expert_68/']
     n_epoch_list = [750]
     lrate_list = [1e-4, 1e-5]
     device_list = ["mps"]

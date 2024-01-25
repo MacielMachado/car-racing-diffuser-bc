@@ -1,8 +1,8 @@
 {
     "model_name": "default",
-    "n_epoch": 40,
+    "n_epoch": 750,
     "lrate": 1e-05,
-    "device": "cuda",
+    "device": "mps",
     "n_hidden": 128,
     "batch_size": 32,
     "n_T": 20,
