@@ -1,4 +1,5 @@
 import os
+import git
 import torch
 import wandb
 import logging
@@ -47,7 +48,7 @@ class Trainer():
 
     def main(self):
         if self.run_wandb:
-            self.config_wandb(project_name="car-racing-diffuser-bc-ppo", name=self.name)
+            self.config_wandb(project_name="OpenAI-Car-Racing-Article-Diffuser-Server", name=self.name)
         torch_data_train, dataload_train = self.prepare_dataset()
         x_dim, y_dim = self.get_x_and_y_dim(torch_data_train)
         conv_model = self.create_conv_model(x_dim, y_dim)
@@ -79,10 +80,18 @@ class Trainer():
                 "embed_dim": self.embed_dim,
                 "guide_w": self.guide_w,
                 "dataset": self.dataset_path,
+                "model": self.embedding,
+                "commit_hash": self.get_git_commit_hash()
             }
         if name != '':
-            return wandb.init(project=project_name, name=name, config=config)
+            return wandb.init(project=project_name,
+                              name=name+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash(),
+                              config=config)
         return wandb.init(project=project_name, config=config)
+
+    def get_git_commit_hash(self):
+        repo = git.Repo(search_parent_directories=True)
+        return repo.head.object.hexsha
 
     def prepare_dataset(self):
         tf = transforms.Compose([])
@@ -178,15 +187,15 @@ class Trainer():
                             "right_action_MSE": action_MSE[2]})
                     
                 results_ep.append(loss_ep / n_batch)
-            
+
             if ep % 10 == 0:
                 stop = self.early_stopping(model, ep)
                 if stop:
                     break
 
-            if ep in [40, 80, 150, 250, 500]:
-                name=f'model_novo_{self.name}_ep_{ep}'
-                self.save_model(model, name)
+            if ep in [1, 20, 40, 80, 150, 250, 500, 600, 749]:
+                name=f'model_novo_ep_{ep}'
+                self.save_model(model, name, ep)
 
         if self.run_wandb:
             wandb.finish()
@@ -201,7 +210,7 @@ class Trainer():
             self.best_reward = reward
             self.counter = 0
             name=self.name+'_model_best_reward'
-            self.save_model(model, name)
+            self.save_model(model, name, ep)
         else:
             self.counter += 1
         stop = False
@@ -212,10 +221,12 @@ class Trainer():
         return stop 
 
 
-    def save_model(self, model, name):
-        if self.param_search == True:
-            return torch.save(model.state_dict(), os.path.join(os.getcwd(),name+'.pkl'))
-        return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
+    def save_model(self, model, name, ep=''):
+        # if self.param_search == True:
+        #     return torch.save(model.state_dict(), os.path.join(os.getcwd(),name+'.pkl'))
+        os.makedirs(os.getcwd()+'/model_pytorch/'+self.dataset.split(os.sep)[1], exist_ok=True)
+        torch.save(self.model.state_dict(), os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1]+'/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{ep}'+'.pkl')
+        # return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):
     assert len(y) == len(y_hat)
