@@ -942,7 +942,7 @@ class ResidualConvBlock(nn.Module):
 
 
 class Model_cnn_mlp(nn.Module):
-    def __init__(self, x_shape, n_hidden, y_dim, embed_dim, net_type, output_dim=None, cnn_out_dim=1152):
+    def __init__(self, x_shape, n_hidden, y_dim, embed_dim, net_type, output_dim=None, cnn_out_dim=512):
         super(Model_cnn_mlp, self).__init__()
 
         self.x_shape = x_shape

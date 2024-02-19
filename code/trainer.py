@@ -185,7 +185,7 @@ class Trainer():
                     break
 
             if ep in [40, 80, 150, 250, 500]:
-                name=f'model_novo_ep_{ep}'
+                name=f'model_novo_{self.name}_ep_{ep}'
                 self.save_model(model, name)
 
         if self.run_wandb:

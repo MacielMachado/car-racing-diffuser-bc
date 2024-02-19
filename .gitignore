@@ -9,7 +9,11 @@ tutorial
 tutorial_*
 frame
 experiments
+experiments_ppo
 data
+
+screenlog.0
+*.json
 
 # Models
 *.pkl

@@ -1,6 +1,6 @@
 {
     "model_name": "default",
-    "n_epoch": 40,
+    "n_epoch": 750,
     "lrate": 0.0001,
     "device": "cuda",
     "n_hidden": 128,

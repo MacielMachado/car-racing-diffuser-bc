@@ -17,7 +17,6 @@ class Tester(RecordObservations):
         self.model = model
         self.env = env
         self.name = name
-        self.render = render
         self.device = device
         self.actions = []
         self.observations = []
@@ -138,9 +137,8 @@ class Tester(RecordObservations):
 
 if __name__ == '__main__':
     versions_path = "experiments/"
-    version_numbers = [0, 1, 2, 3, 8, 9, 10, 11]
-    # versions = ["version_3", "version_4"]
-    gains = [4, 4.5, 5.5, 3.5, 3, 1, 5.5]
+    version_numbers = [11, 1, 2, 3, 8, 9, 10, 11]
+    gains = [4.5, 5.5, 3.5, 3, 1, 5.5]
     for gain in gains:
         for version in sorted(version_numbers):
             name = versions_path + "version_" + str(version)
@@ -161,7 +159,12 @@ if __name__ == '__main__':
 
             env = CarRacing(render_mode="rgb-array") 
             nn_model = Model_cnn_mlp(
-                x_shape, n_hidden, y_dim, embed_dim=embed_dim, net_type=net_type
+                x_shape,
+                n_hidden,
+                y_dim,
+                embed_dim=embed_dim,
+                net_type=net_type,
+                cnn_out_dim=512,
             ).to(device)
 
             model = Model_Cond_Diffusion(
@@ -175,13 +178,15 @@ if __name__ == '__main__':
                 guide_w=0.0,)
 
             # model.load_state_dict(torch.load("model_casa2.pkl"))
-            model.load_state_dict(torch.load(name + "_model_best_reward.pkl",
-                                map_location=torch.device('cuda')))
+            model.load_state_dict(
+                torch.load("version_" + str(version) + "_model_best_reward.pkl",
+                map_location=torch.device('cuda'))
+                )
 
             stop = 1
             tester = Tester(model, env, render=True, device=device)
             try:
-                tester.run(run_wandb=False,
+                tester.run_trainer(run_wandb=False,
                            name="version_" + str(version),
                            gain=gain,
                            save=True)
