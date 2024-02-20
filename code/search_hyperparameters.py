@@ -71,7 +71,7 @@ if __name__ == '__main__':
     n_T_list = [20, 50]
     net_type_list = ["transformer"]
     drop_prob_list = [0.0]
-    extra_diffusion_steps_list = [0]
+    extra_diffusion_steps_list = [16]
     embed_dim_list = [128]
     guide_w_list = [0.0]
     betas_list = [[1e-4, 0.02]]

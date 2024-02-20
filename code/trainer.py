@@ -85,7 +85,7 @@ class Trainer():
             }
         if name != '':
             return wandb.init(project=project_name,
-                              name=name+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash(),
+                              name=name+'_'+self.dataset_path.split(os.sep)[-1]+'_'+self.get_git_commit_hash()[0:4],
                               config=config)
         return wandb.init(project=project_name, config=config)
 
@@ -174,20 +174,20 @@ class Trainer():
                 pbar.set_description(f"train loss: {loss_ep/n_batch:.4f}")
                 optim.step()
 
-            with torch.no_grad():
-                y_hat_batch = model.sample(x_batch)
-                action_MSE = extract_action_mse(y_batch, y_hat_batch)
+                with torch.no_grad():
+                    y_hat_batch = model.sample(x_batch)
+                    action_MSE = extract_action_mse(y_batch, y_hat_batch)
 
-            if self.run_wandb:
-                # log metrics to wandb
-                wandb.log({"loss": loss_ep/n_batch,
-                            "lr": lr_decay,
-                            "left_action_MSE": action_MSE[0],
-                            "acceleration_action_MSE": action_MSE[1],
-                            "right_action_MSE": action_MSE[2]})
-                    
-                results_ep.append(loss_ep / n_batch)
-
+                if self.run_wandb:
+                    # log metrics to wandb
+                    wandb.log({"loss": loss_ep/n_batch,
+                                "lr": lr_decay,
+                                "left_action_MSE": action_MSE[0],
+                                "acceleration_action_MSE": action_MSE[1],
+                                "right_action_MSE": action_MSE[2]})
+                        
+                    results_ep.append(loss_ep / n_batch)
+            
             if ep % 10 == 0:
                 stop = self.early_stopping(model, ep)
                 if stop:
