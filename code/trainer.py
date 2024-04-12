@@ -48,7 +48,7 @@ class Trainer():
 
     def main(self):
         if self.run_wandb:
-            self.config_wandb(project_name="OpenAI-Car-Racing-Article-Diffuser-Server", name=self.name)
+            self.config_wandb(project_name="OpenAI-Car-Racing-Article-Diffuser-Server-2", name=self.name)
         torch_data_train, dataload_train = self.prepare_dataset()
         x_dim, y_dim = self.get_x_and_y_dim(torch_data_train)
         conv_model = self.create_conv_model(x_dim, y_dim)
@@ -224,8 +224,8 @@ class Trainer():
     def save_model(self, model, name, ep=''):
         # if self.param_search == True:
         #     return torch.save(model.state_dict(), os.path.join(os.getcwd(),name+'.pkl'))
-        os.makedirs(os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[-1], exist_ok=True)
-        torch.save(self.model.state_dict(), os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1]+'/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{ep}'+'.pkl')
+        os.makedirs(os.getcwd()+'/model_pytorch_2/'+self.dataset_path.split(os.sep)[-1], exist_ok=True)
+        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch_2/'+self.dataset_path.split(os.sep)[-1]+'/'+self.dataset_path.split(os.sep)[-2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{ep}'+{name}+'.pkl')
         # return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):

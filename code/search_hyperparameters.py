@@ -64,7 +64,7 @@ if __name__ == '__main__':
                      '/home/casa/projects/bruno/datasets/car-racing/human_dataset/tutorial_human_expert_0',]
 
     n_epoch_list = [750]
-    lrate_list = [1e-4, 1e-5]
+    lrate_list = [1e-5]
     device_list = ["cuda"]
     n_hidden_list = [128, 512]
     batch_size_list = [32, 512]

@@ -136,7 +136,7 @@ class Tester(RecordObservations):
 
 
 if __name__ == '__main__':
-    versions_path = "experiments/"
+    versions_path = "model_pytorch/tutorial_human_expert_0_top_20/"
     version_numbers = [11, 1, 2, 3, 8, 9, 10, 11]
     gains = [4.5, 5.5, 3.5, 3, 1, 5.5]
     for gain in gains:
