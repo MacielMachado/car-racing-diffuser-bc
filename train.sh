@@ -1,1 +1,1 @@
-screen -L -S train .venv/bin/python code/search_hyperparameters.py
+screen -L -S train venv/bin/python code/search_hyperparameters.py
