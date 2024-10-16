@@ -19,6 +19,9 @@ ppo-models
 # Models
 *.pkl
 
+# Dataset
+*.npy
+
 # Videos
 *.mp4
 *.avi

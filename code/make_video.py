@@ -60,7 +60,8 @@ class VideoMaker(DataHandler):
 
 if __name__ == '__main__':
     video_maker = VideoMaker()
-    array  = video_maker.load_array('Datasets/tutorial_human_expert_0_top_20/states.npy')
-    video_maker.save_record(array, name='Datasets/tutorial_human_expert_0_top_20/video', origin='human')
+    folder = 'Datasets/human/tutorial_human_expert_0/'
+    array  = video_maker.load_array(folder+'states.npy')
+    video_maker.save_record(array, name=folder+'/video', origin='human')
     stop = 1
 

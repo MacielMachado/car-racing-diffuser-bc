@@ -46,7 +46,7 @@ def launch_training_job(parent_dir, data_dir, job_name, params, dataset_origin):
                                dataset_path=data_dir,
                                name=job_name,
                                param_search=True,
-                               run_wandb=True,
+                               run_wandb=False,
                                record_run=True,
                                embedding=params.embedding,
                                dataset_origin=dataset_origin)
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     #                  r'Datasets/human/tutorial_human_expert_0_top_20',
     #                  r'Datasets/ppo/tutorial_ppo_expert_68/',]
 
-    data_dir_list = [r'Datasets/ppo/tutorial_ppo_expert_68/']
+    data_dir_list = [r'Datasets/human/tutorial_human_expert_1/']
     n_epoch_list = [750]
     lrate_list = [1e-4, 1e-5]
     device_list = ["mps"]

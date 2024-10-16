@@ -159,7 +159,8 @@ if __name__ == '__main__':
             x_shape = (96, 96, 4)
             y_dim = 3
 
-            env = CarRacing(render_mode="rgb-array") 
+            # env = CarRacing(render_mode="rgb-array") 
+            env = CarRacing(render_mode="human") 
             nn_model = Model_cnn_mlp(
                 x_shape, n_hidden, y_dim, embed_dim=embed_dim, net_type=net_type
             ).to(device)

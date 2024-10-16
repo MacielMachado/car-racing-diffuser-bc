@@ -77,6 +77,7 @@ class ActionsAnalyzer(DataHandler):
 
 
 if __name__ == '__main__':
-    analyzer = ActionsAnalyzer(path=r'Datasets/ppo/teste')
+    # analyzer = ActionsAnalyzer(path=r'Datasets/ppo/teste')
+    analyzer = ActionsAnalyzer(path=r'Datasets/human/tutorial_human_expert_0/')
     actions = analyzer.load_action()
     analyzer.make_histograms(actions)
