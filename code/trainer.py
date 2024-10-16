@@ -225,7 +225,7 @@ class Trainer():
         # if self.param_search == True:
         #     return torch.save(model.state_dict(), os.path.join(os.getcwd(),name+'.pkl'))
         os.makedirs(os.getcwd()+'/model_pytorch_2/'+self.dataset_path.split(os.sep)[-1], exist_ok=True)
-        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch_2/'+self.dataset_path.split(os.sep)[-1]+'/'+self.dataset_path.split(os.sep)[-2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{ep}'+{name}+'.pkl')
+        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch_2/'+self.dataset_path.split(os.sep)[-1]+'/'+self.dataset_path.split(os.sep)[-2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{name}_'+f'{ep}'+'.pkl')
         # return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):
