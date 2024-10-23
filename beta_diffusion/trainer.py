@@ -174,6 +174,7 @@ class Trainer():
             model.train()
 
             lr_decay = self.decay_lr(ep, self.lrate)
+            lr_decay = 6.4e-09
             # train loop
             pbar = tqdm(dataload_train)
             loss_ep, n_batch = 0, 0

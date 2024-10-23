@@ -6,6 +6,9 @@ __pycache__/
 # General Files
 *.json
 
+# Screenlog
+beta_diffusion/screenlog.0
+
 # Dataset
 ppo_dataset
 tutorial
