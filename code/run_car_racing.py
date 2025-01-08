@@ -1,8 +1,10 @@
 import os
 import cv2
 import torch
+import pandas as pd
 import wandb
 import numpy as np
+from make_video import VideoMaker
 from utils import Params
 import matplotlib.pyplot as plt
 from cart_racing_v2 import CarRacing
@@ -22,7 +24,7 @@ class Tester(RecordObservations):
         self.actions = []
         self.observations = []
         self.infos = []
-        self.path = os.getcwd() + '/data/'
+        self.path = os.getcwd() + '/dissertation/' + self.name + '/'
         os.makedirs(self.path, exist_ok=True)
 
     def run_trainer(self, dataset_origin="human"):      
@@ -53,8 +55,8 @@ class Tester(RecordObservations):
         if run_wandb:
             self.config_wandb(project_name="car-racing-diffuser-bc-human-eval", name=name)
         episode = 0
-        reward_list = []        
-        while episode < 20:
+        reward_list = []  
+        while episode < 50:
             # np.random.seed(40) # 1
             obs, _ = self.env.reset()
             reward = 0
@@ -81,24 +83,28 @@ class Tester(RecordObservations):
                 else:
                     reward_list_mean = np.mean(np.array(reward_list))
                 print(f"{version} - episode: {episode} - count: {counter} - reward: {reward:.2f} - reward_list mean: {reward_list_mean:.2f} - gain: {gain}")
-                if done or truncated: 
-                    break
                 if run_wandb:
                     wandb.log({"reward": reward})
+                if done or truncated: 
+                    break
             if run_wandb: wandb.finish()
             episode += 1
             reward_list.append(reward)
 
-            if save:
-                np.save(
-                    self.path+'states_' + str(gain).replace(".", "_") + '_' + f'{episode}' + '.npy', 
-                    self.observations)
-                np.save(
-                    self.path+'actions_' + str(gain).replace(".", "_") + '_' +  f'{episode}' + '.npy', 
-                    self.actions)
+            # if save:
+            #     np.save(
+            #         self.path+'states_' + str(gain).replace(".", "_") + '_' + f'{episode}' + '.npy', 
+            #         self.observations)
+            #     np.save(
+            #         self.path+'actions_' + str(gain).replace(".", "_") + '_' +  f'{episode}' + '.npy', 
+            #         self.actions)
+                
+                # VideoMaker.save_record(frames=self.observations, name=self.path+'video_'+str(gain).replace(".", "_"))
 
-        if save:
-            self.scatter_plot_reward(reward_list, gain)
+            if save:
+                self.scatter_plot_reward(reward_list, gain)
+                df = pd.DataFrame(reward_list, columns=["Values"])
+                df.to_csv(self.path+'rewards_' + str(gain).replace(".", "_") + '_' +  f'{episode}' + ".csv", index=False)
         return reward
 
     def scatter_plot_reward(self, reward_list, gain):
@@ -108,10 +114,13 @@ class Tester(RecordObservations):
         plt.title(f"Reward Scatter {self.name} - Mean: {sum(reward_list)/len(reward_list):.2f}")
         plt.ylabel("Reward")
         plt.xlabel("Episode")
+        plt.ylim([0, 1000])
         plt.grid()
-        path = "experiments/scatter/"+self.name+"/"
+        path = "dissertation/scatter/"+self.name+"/"
         os.makedirs(path, exist_ok=True)
         plt.savefig(path+self.name+"_scatter_fixed_"+str(gain).replace(".", "_")+".png")
+        df = pd.DataFrame(reward_list, columns=["Values"])
+        df.to_csv(path+self.name+"_scatter_fixed_"+str(gain).replace(".", "_") + ".csv", index=False)
         plt.close()
 
     def config_wandb(self, project_name, name):
@@ -136,11 +145,12 @@ class Tester(RecordObservations):
             self.infos.append(info)
 
 if __name__ == '__main__':
-    versions_path = "experiments/"
+    versions_path = "dissertation_2/"
     version_numbers = [0, 1, 2, 3, 8, 9, 10, 11]
-    version_numbers = [3, 4]
+    version_numbers = [3]
     # versions = ["version_3", "version_4"]
     gains = [4, 4.5, 5.5, 3.5, 3, 1, 5.5]
+    gains = [1000]
     for gain in gains:
         for version in sorted(version_numbers):
             name = versions_path + "version_" + str(version)
@@ -160,7 +170,7 @@ if __name__ == '__main__':
             y_dim = 3
 
             # env = CarRacing(render_mode="rgb-array") 
-            env = CarRacing(render_mode="human") 
+            env = CarRacing(render_mode="rgb_array") 
             nn_model = Model_cnn_mlp(
                 x_shape, n_hidden, y_dim, embed_dim=embed_dim, net_type=net_type
             ).to(device)
