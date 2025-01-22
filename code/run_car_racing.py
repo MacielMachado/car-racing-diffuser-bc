@@ -12,7 +12,6 @@ from data_preprocessing import DataHandler
 from record_observations import RecordObservations
 from models import Model_Cond_Diffusion, Model_cnn_mlp
 
-
 class Tester(RecordObservations):
     def __init__(self, model, env, render=True, device="mps", name="version"):
         super(Tester).__init__()

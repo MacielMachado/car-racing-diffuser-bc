@@ -186,7 +186,7 @@ class Trainer():
                                 "right_action_MSE": action_MSE[2]})
                         
                     results_ep.append(loss_ep / n_batch)
-            
+
             if ep % 10 == 0 or ep == 1:
                 stop, reward = self.early_stopping(model, ep)
                 name=f'_reward_{reward}'
@@ -245,8 +245,7 @@ if __name__ == '__main__':
     params = Params("experiments/version_3/params.json")
     trainer_instance = Trainer( n_epoch=params.n_epoch,
                                 lrate=params.lrate,
-                                # device=params.device,
-                                device="mps",
+                                device=params.device,
                                 n_hidden=params.n_hidden,
                                 batch_size=1,
                                 n_T=params.n_T,

@@ -254,7 +254,7 @@ def extract_action_mse(y, y_hat):
 
 if __name__ == '__main__':
 
-    dataset_path = "Datasets/human/tutorial_human_expert_0_top_20"
+    dataset_path = "Datasets/ppo/tutorial_ppo_expert_68"
     params = Params("experiments_beta_diffusion/default/params.json")
     trainer_instance = Trainer( n_epoch=params.n_epoch,
                                 lrate=params.lrate,
@@ -271,7 +271,7 @@ if __name__ == '__main__':
                                 dataset_path=dataset_path,
                                 name='trainer_400',
                                 run_wandb=True,
-                                record_run=False,
+                                record_run=True,
                                 embedding=params.embedding,
                                 losstype=params.losstype,
                                 eta=params.eta,
@@ -280,5 +280,5 @@ if __name__ == '__main__':
                                 sigmoid_power=params.sigmoid_power,
                                 sigmoid_start=params.sigmoid_start,
                                 sigmoid_end=params.sigmoid_end,
-                                dataset_origin="human")
+                                dataset_origin="ppo")
     trainer_instance.main()
