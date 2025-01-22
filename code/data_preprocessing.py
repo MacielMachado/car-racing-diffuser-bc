@@ -2,6 +2,8 @@ import math
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.ndimage import zoom
+
 
 class DataHandler():
     def __init__(self):
@@ -89,9 +91,13 @@ class DataHandler():
         return stacked_images
     
     def __preprocess_ppo_images(self, images_array):
-        images = images_array[:,-1,:,:]
+        # images = images_array[:,-1,:,:]
+        images = images_array
+        scale_factors = [1, 1, 96 / 84, 96 / 84]
+        images = zoom(images, scale_factors, order=1)
         images = DataHandler().normalizing(images)
-        images = DataHandler().stack_with_previous(images)
+        images = np.transpose(images, (0, 2, 3, 1))
+        # images = DataHandler().stack_with_previous(images)
         return images
     
     def __preprocess_human_images(self, images_array):
@@ -109,7 +115,8 @@ class DataHandler():
     
     def preprocess_actions(self, actions_array, origin):
         if origin == 'ppo':
-            return  self.preprocess_ppo_actions(actions_array)
+            # return  self.preprocess_ppo_actions(actions_array)
+            return actions_array
         if origin == 'human':
             return actions_array
         raise NotImplementedError

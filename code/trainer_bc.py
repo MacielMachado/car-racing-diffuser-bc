@@ -15,7 +15,8 @@ from train import CarRacingCustomDataset
 from data_preprocessing import DataHandler
 from run_car_racing import Tester
 from cart_racing_v2 import CarRacing
-from models import Model_Cond_Diffusion, Model_cnn_mlp, Model_cnn_bc
+from models_bc import Model_cnn_mlp
+import torch.nn.functional as F
 
 class Trainer():
     def __init__(self, n_epoch, lrate, device, n_hidden, batch_size, n_T,
@@ -51,17 +52,16 @@ class Trainer():
             self.config_wandb(project_name="OpenAI-Car-Racing-Article-Diffuser", name=self.name)
         torch_data_train, dataload_train = self.prepare_dataset()
         x_dim, y_dim = self.get_x_and_y_dim(torch_data_train)
-        conv_model = self.create_conv_model(x_dim, y_dim)
-        model = self.create_agent_model(conv_model, x_dim, y_dim)
+        model = self.create_conv_model(x_dim, y_dim)
         optim = self.create_optimizer(model)
         model = self.train(model, dataload_train, optim)
-        with torch.no_grad():
-            self.evaluate(model.eval(), CarRacing(), name='eval_'+self.name)
+        # with torch.no_grad():
+        #     self.evaluate(model.eval(), CarRacing(), name='eval_'+self.name)
         
-    def evaluate(self, model, env, name, middle, seed):
+    def evaluate(self, model, env, name, middle):
         tester = Tester(model, env, render=True, device=self.device)
         if middle:
-            return tester.run_trainer(self.dataset_origin, seed)
+            return tester.run_trainer(self.dataset_origin)
         else:
             tester.run()
 
@@ -114,8 +114,7 @@ class Trainer():
     def create_conv_model(self, x_dim, y_dim):
 
         if self.dataset_origin == 'ppo':
-            cnn_out_dim = 1152
-            # cnn_out_dim = 512
+            cnn_out_dim = 512
         else:
             cnn_out_dim = 1152
 
@@ -130,18 +129,6 @@ class Trainer():
                                 cnn_out_dim=cnn_out_dim).to(self.device)
         else:
             raise NotImplementedError
-    
-    def create_agent_model(self, conv_model, x_dim, y_dim):
-        return Model_Cond_Diffusion(
-            conv_model,
-            betas=self.betas,
-            n_T = self.n_T,
-            device=self.device,
-            x_dim=x_dim,
-            y_dim=y_dim,
-            drop_prob=self.drop_prob,
-            guide_w=self.guide_w
-        ).to(self.device)
     
     def create_optimizer(self, model):
         return torch.optim.Adam(model.parameters(), lr=self.lrate)
@@ -165,7 +152,8 @@ class Trainer():
                 DataHandler().plot_batch(x_batch, y_batch, self.batch_size, render=False)
                 x_batch = x_batch.type(torch.FloatTensor).to(self.device)
                 y_batch = y_batch.type(torch.FloatTensor).to(self.device)
-                loss = model.loss_on_batch(x_batch, y_batch)
+                y_hat = model(x_batch)
+                loss = F.mse_loss(y_hat, y_batch)
                 optim.zero_grad()
                 loss.backward()
                 loss_ep += loss.detach().item()
@@ -173,30 +161,21 @@ class Trainer():
                 pbar.set_description(f"train loss: {loss_ep/n_batch:.4f}")
                 optim.step()
 
-                with torch.no_grad():
-                    y_hat_batch = model.sample(x_batch)
-                    action_MSE = extract_action_mse(y_batch, y_hat_batch)
-
                 if self.run_wandb:
                     # log metrics to wandb
                     wandb.log({"loss": loss_ep/n_batch,
-                                "lr": lr_decay,
-                                "left_action_MSE": action_MSE[0],
-                                "acceleration_action_MSE": action_MSE[1],
-                                "right_action_MSE": action_MSE[2]})
+                                "lr": lr_decay,})
                         
                     results_ep.append(loss_ep / n_batch)
             
-            if ep % 10 == 0 or ep == 1:
-                stop, reward = self.early_stopping(model, ep)
-                name=f'_reward_{reward}'
-                self.save_model(model, name, ep)
-                if stop:
-                    break
+            # if ep % 10 == 0:
+            #     stop = self.early_stopping(model, ep)
+            #     if stop:
+            #         break
 
-            # if ep in [1, 20, 40, 80, 150, 250, 500, 600, 749]:
-            #     name=f'model_novo_ep_{ep}'
-            #     self.save_model(model, name, ep)
+            if ep in [1, 20, 40, 80, 150, 250, 500, 600, 749]:
+                name=f'model_novo_ep_{ep}'
+                self.save_model(model, name, ep)
 
         if self.run_wandb:
             wandb.finish()
@@ -205,12 +184,12 @@ class Trainer():
     
     def early_stopping(self, model, ep):
         with torch.no_grad():
-            reward = self.evaluate(model.eval(), CarRacing(), name=self.name+'_eval', middle=True, seed=1)
+            reward = self.evaluate(model.eval(), CarRacing(), name=self.name+'_eval', middle=True)
         wandb.log({"reward": reward})
         if reward > self.best_reward:
             self.best_reward = reward
             self.counter = 0
-            name=f'_model_best_reward_{reward}'
+            name=self.name+'_model_best_reward'
             self.save_model(model, name, ep)
         else:
             self.counter += 1
@@ -219,14 +198,14 @@ class Trainer():
         if self.counter >= self.patience:
             print(f'Early stopping after {ep+1} epochs without improvement.')
             stop = True
-        return stop, reward
+        return stop 
 
 
     def save_model(self, model, name, ep=''):
         # if self.param_search == True:
         #     return torch.save(model.state_dict(), os.path.join(os.getcwd(),name+'.pkl'))
-        os.makedirs(os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1], exist_ok=True)
-        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1]+'/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{ep}_{name}'+'.pkl')
+        os.makedirs(os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[-1], exist_ok=True)
+        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[-1]+'/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{ep}'+'.pkl')
         # return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):
@@ -239,27 +218,29 @@ def extract_action_mse(y, y_hat):
 
 if __name__ == '__main__':
 
-    dataset_path = "dataset_fixed"
-    dataset_path = "Datasets/ppo/tutorial_ppo_expert_68"
-    # dataset_path = "Datasets/human/tutorial_human_expert_0_top_20"
-    params = Params("experiments/version_3/params.json")
-    trainer_instance = Trainer( n_epoch=params.n_epoch,
-                                lrate=params.lrate,
-                                # device=params.device,
-                                device="mps",
-                                n_hidden=params.n_hidden,
-                                batch_size=1,
-                                n_T=params.n_T,
-                                net_type=params.net_type,
-                                drop_prob=params.drop_prob,
-                                extra_diffusion_steps=params.extra_diffusion_steps,
-                                embed_dim=params.embed_dim,
-                                guide_w=params.guide_w,
-                                betas=(1e-4, 0.02),
-                                dataset_path=dataset_path,
-                                name='trainer_400',
-                                run_wandb=True,
-                                record_run=True,
-                                embedding=params.embedding,
-                                dataset_origin="ppo")
-    trainer_instance.main()
+    datasets = ["Datasets/human/tutorial_human_expert_0",
+                "Datasets/human/tutorial_human_expert_0_top_20",
+                "Datasets/human/tutorial_human_expert_1",
+                "Datasets/human/tutorial_human_expert_2"]
+    for dataset_path in datasets:
+        # dataset_path = ["Datasets/human/tutorial_human_expert_0"]
+        params = Params("experiments_bc/version_3/params.json")
+        trainer_instance = Trainer( n_epoch=params.n_epoch,
+                                    lrate=params.lrate,
+                                    device=params.device,
+                                    n_hidden=params.n_hidden,
+                                    batch_size=1,
+                                    n_T=params.n_T,
+                                    net_type=params.net_type,
+                                    drop_prob=params.drop_prob,
+                                    extra_diffusion_steps=params.extra_diffusion_steps,
+                                    embed_dim=params.embed_dim,
+                                    guide_w=params.guide_w,
+                                    betas=(1e-4, 0.02),
+                                    dataset_path=dataset_path,
+                                    name='trainer_400',
+                                    run_wandb=True,
+                                    record_run=False,
+                                    embedding=params.embedding,
+                                    dataset_origin="human")
+        trainer_instance.main()

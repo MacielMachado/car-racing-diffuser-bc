@@ -817,6 +817,7 @@ if __name__ == "__main__":
         restart = False
         while True:
             register_input()
+            print(a)
             s, r, terminated, truncated, info = env.step(a)
             total_reward += r
             if steps % 200 == 0 or terminated or truncated:

@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from cart_racing_v2 import CarRacing
 from data_preprocessing import DataHandler
 from record_observations import RecordObservations
-from models import Model_Cond_Diffusion, Model_cnn_mlp
+from models_bc import Model_cnn_mlp
 
 
 class Tester(RecordObservations):
@@ -27,19 +27,16 @@ class Tester(RecordObservations):
         self.path = os.getcwd() + '/dissertation/' + self.name + '/'
         os.makedirs(self.path, exist_ok=True)
 
-    def run_trainer(self, dataset_origin="human", seed=None):   
-        if seed:   
-            obs, _ = self.env.reset(seed=seed)
-        else:
-            obs, _ = self.env.reset()
+    def run_trainer(self, dataset_origin="human"):      
+        obs, _ = self.env.reset()
         reward = 0
         counter=0
         done = False
         truncated = False
         while counter < 1000:
             self.model.eval()
-            # if dataset_origin == "ppo":
-            #     obs = obs[0:84, 0:84, :]
+            if dataset_origin == "ppo":
+                obs = obs[0:84, 0:84, :]
             obs_tensor = self.preprocess_obs(obs)
             torch.from_numpy(obs_tensor).float().to(self.device).shape
             obs_tensor = (torch.Tensor(obs_tensor).type(torch.FloatTensor).to(self.device))
@@ -53,7 +50,7 @@ class Tester(RecordObservations):
         return reward
 
 
-    def run(self, run_wandb, name='', gain=1, save=False, dataset_origin="human", extra_diffusion_steps=0):
+    def run(self, run_wandb, name='', gain=1, save=False, dataset_origin="human"):
         self.name = name
         if run_wandb:
             self.config_wandb(project_name="car-racing-diffuser-bc-human-eval", name=name)
@@ -75,7 +72,7 @@ class Tester(RecordObservations):
                 obs_tensor = (
                     torch.Tensor(obs_tensor).type(torch.FloatTensor).to(self.device)
                     )
-                action = self.model.sample_extra(obs_tensor, extra_diffusion_steps).to(self.device)
+                action = self.model.sample(obs_tensor).to(self.device)
                 info = [reward, episode]
                 if save: self.save_game(action.cpu().detach().numpy()[0], obs, info)
                 obs, new_reward, done, truncated, _ = self.env.step(action.detach().cpu().numpy()[0]* [1, gain, 1])
@@ -105,12 +102,12 @@ class Tester(RecordObservations):
                 # VideoMaker.save_record(frames=self.observations, name=self.path+'video_'+str(gain).replace(".", "_"))
 
             if save:
-                self.scatter_plot_reward(reward_list, gain, extra_diffusion_steps)
+                self.scatter_plot_reward(reward_list, gain)
                 df = pd.DataFrame(reward_list, columns=["Values"])
                 df.to_csv(self.path+'rewards_' + str(gain).replace(".", "_") + '_' +  f'{episode}' + ".csv", index=False)
         return reward
 
-    def scatter_plot_reward(self, reward_list, gain, extra_diffusion_steps=0):
+    def scatter_plot_reward(self, reward_list, gain):
         plt.subplot()
         plt.scatter(range(len(reward_list)), reward_list)
         plt.axhline(y=900, color='r', linestyle='--', linewidth=2)
@@ -121,9 +118,9 @@ class Tester(RecordObservations):
         plt.grid()
         path = "dissertation/scatter/"+self.name+"/"
         os.makedirs(path, exist_ok=True)
-        plt.savefig(path+self.name+"_scatter_fixed_"+str(gain).replace(".", "_")+f"_extra_diffusion_steps_{extra_diffusion_steps}.png")
+        plt.savefig(path+self.name+"_scatter_fixed_"+str(gain).replace(".", "_")+".png")
         df = pd.DataFrame(reward_list, columns=["Values"])
-        df.to_csv(path+self.name+"_scatter_fixed_"+str(gain).replace(".", "_") + f"_extra_diffusion_steps_{extra_diffusion_steps}.csv", index=False)
+        df.to_csv(path+self.name+"_scatter_fixed_"+str(gain).replace(".", "_") + ".csv", index=False)
         plt.close()
 
     def config_wandb(self, project_name, name):
@@ -153,15 +150,23 @@ if __name__ == '__main__':
     version_numbers = [3]
     # versions = ["version_3", "version_4"]
     gains = [4, 4.5, 5.5, 3.5, 3, 1, 5.5]
-    gains = [3.5]
-    for gain in gains:
+    gains = [1000]
+
+    models = [
+        '/Users/brunomaciel/Documents/git/car-racing-diffuser-bc/model_pytorch/tutorial_human_expert_0/tutorial_human_expert_0_d1fb72197b39a32315257378c42dc994329ac642_ep_40.pkl',
+        '/Users/brunomaciel/Documents/git/car-racing-diffuser-bc/model_pytorch/tutorial_human_expert_0/tutorial_human_expert_0_d1fb72197b39a32315257378c42dc994329ac642_ep_20.pkl',
+        '/Users/brunomaciel/Documents/git/car-racing-diffuser-bc/model_pytorch/tutorial_human_expert_0/tutorial_human_expert_0_d1fb72197b39a32315257378c42dc994329ac642_ep_1.pkl',
+        '/Users/brunomaciel/Documents/git/car-racing-diffuser-bc/model_pytorch/tutorial_human_expert_0/tutorial_human_expert_0_d1fb72197b39a32315257378c42dc994329ac642_ep_0.pkl',
+              ]
+
+    for model_path in models:
         for version in sorted(version_numbers):
             name = versions_path + "version_" + str(version)
             params = Params(name + "/params.json")
 
             n_epoch = params.n_epoch
             lrate = params.lrate
-            device = "mps"
+            device = "cpu"
             n_hidden = params.n_hidden
             batch_size = params.batch_size
             n_T = params.n_T
@@ -174,33 +179,20 @@ if __name__ == '__main__':
 
             # env = CarRacing(render_mode="rgb-array") 
             env = CarRacing(render_mode="rgb_array") 
-            # env = CarRacing(render_mode="human") 
-            nn_model = Model_cnn_mlp(
+            model = Model_cnn_mlp(
                 x_shape, n_hidden, y_dim, embed_dim=embed_dim, net_type=net_type
             ).to(device)
 
-            model = Model_Cond_Diffusion(
-                nn_model,
-                betas=(1e-4, 0.02),
-                n_T=n_T,
-                device=device,
-                x_dim=x_shape,
-                y_dim=y_dim,
-                drop_prob=drop_prob,
-                guide_w=0.0,)
-
             # model.load_state_dict(torch.load("model_casa2.pkl"))
-            model.load_state_dict(torch.load(name + "/" + "version_" + str(version) + ".pkl",
-                                map_location=torch.device('mps')))
+            model.load_state_dict(model_path)
 
             stop = 1
             tester = Tester(model, env, render=True, device=device)
             try:
                 tester.run(run_wandb=False,
                            name="version_" + str(version),
-                           gain=gain,
-                           save=True,
-                           extra_diffusion_steps=16)
+                           gain=1,
+                           save=True)
             except Exception as exception:
                 print("---------------------------------------------------")
                 print(f"The {version} couldn't be trained due to ")
