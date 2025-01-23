@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/home/casa/projects/bruno/car-racing-diffuser-bc/code/trainer.py", line 245, in <module>
+    params = Params("experiments/version_3/params.json")
+  File "/home/casa/projects/bruno/car-racing-diffuser-bc/code/utils.py", line 49, in __init__
+    with open(json_path) as f:
+FileNotFoundError: [Errno 2] No such file or directory: 'experiments/version_3/params.json'

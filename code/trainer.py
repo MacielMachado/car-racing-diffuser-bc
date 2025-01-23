@@ -48,7 +48,7 @@ class Trainer():
 
     def main(self):
         if self.run_wandb:
-            self.config_wandb(project_name="OpenAI-Car-Racing-Article-Diffuser", name=self.name)
+            self.config_wandb(project_name="PPO-OpenAI-Car-Racing-Article-Diffuser", name=self.name)
         torch_data_train, dataload_train = self.prepare_dataset()
         x_dim, y_dim = self.get_x_and_y_dim(torch_data_train)
         conv_model = self.create_conv_model(x_dim, y_dim)
