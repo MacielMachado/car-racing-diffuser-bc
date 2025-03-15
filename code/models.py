@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import torch.nn.functional as F
 
 
 class Model_mlp_mse(nn.Module):
@@ -1256,3 +1257,348 @@ class Model_cnn_bc(nn.Module):
         x_embed = self.output(x)
 
         return self.nn_downstream(y, x_embed, t, context_mask)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class Model_Cond_Diffusion_New_Arch(nn.Module):
+    def __init__(self, nn_model, betas, n_T, device, x_dim, y_dim, drop_prob=0.1, guide_w=0.0):
+        super(Model_Cond_Diffusion_New_Arch, self).__init__()
+        for k, v in ddpm_schedules(betas[0], betas[1], n_T).items():
+            self.register_buffer(k, v)
+
+        self.nn_model = nn_model
+        self.n_T = n_T
+        self.device = device
+        self.drop_prob = drop_prob
+        self.loss_mse = nn.MSELoss()
+        self.x_dim = x_dim
+        self.y_dim = y_dim
+        self.guide_w = guide_w
+
+    def loss_on_batch(self, x_batch, y_batch):
+        _ts = torch.randint(1, self.n_T + 1, (y_batch.shape[0], 1)).to(self.device)
+
+        # dropout context with some probability
+        context_mask = torch.bernoulli(torch.zeros(x_batch.shape[0]) + self.drop_prob).to(self.device)
+
+        # randomly sample some noise, noise ~ N(0, 1)
+        noise = torch.randn_like(y_batch).to(self.device)
+
+        # add noise to clean target actions
+        y_t = self.sqrtab[_ts] * y_batch + self.sqrtmab[_ts] * noise
+
+        # use nn model to predict noise
+        noise_pred_batch, std_bc_action = self.nn_model(y_t, x_batch, _ts / self.n_T, context_mask)
+        # noise_pred_batch = self.nn_model(y_batch, x_batch, _ts / self.n_T, context_mask)
+
+        # return mse between predicted and true noise
+        if std_bc_action != None:
+            return self.loss_mse(noise, noise_pred_batch), self.loss_mse(std_bc_action, y_batch)
+        else:
+            return self.loss_mse(noise, noise_pred_batch), None
+
+    def sample(self, x_batch, return_y_trace=False, extract_embedding=False):
+        # also use this as a shortcut to avoid doubling batch when guide_w is zero
+        is_zero = False
+        if self.guide_w > -1e-3 and self.guide_w < 1e-3:
+            is_zero = True
+
+        # how many noisy actions to begin with
+        n_sample = x_batch.shape[0]
+
+        y_shape = (n_sample, self.y_dim)
+
+        # sample initial noise, y_0 ~ N(0, 1),
+        y_i = torch.randn(y_shape).to(self.device)
+
+        if not is_zero:
+            if len(x_batch.shape) > 2:
+                # repeat x_batch twice, so can use guided diffusion
+                x_batch = x_batch.repeat(2, 1, 1, 1)
+            else:
+                # repeat x_batch twice, so can use guided diffusion
+                x_batch = x_batch.repeat(2, 1)
+
+            # half of context will be zero
+            context_mask = torch.zeros(x_batch.shape[0]).to(self.device)
+            context_mask[n_sample:] = 1.0  # makes second half of batch context free
+        else:
+            context_mask = torch.zeros(x_batch.shape[0]).to(self.device)
+
+        if extract_embedding:
+            x_embed, _ = self.nn_model.embed_context(x_batch)
+
+        # run denoising chain
+        y_i_store = []  # if want to trace how y_i evolved
+        for i in range(self.n_T, 0, -1):
+            t_is = torch.tensor([i / self.n_T]).to(self.device)
+            t_is = t_is.repeat(n_sample, 1)
+
+            if not is_zero:
+                # double batch
+                y_i = y_i.repeat(2, 1)
+                t_is = t_is.repeat(2, 1)
+
+            z = torch.randn(y_shape).to(self.device) if i > 1 else 0
+
+            # split predictions and compute weighting
+            if extract_embedding:
+                eps,_ = self.nn_model(y_i, x_batch, t_is, context_mask, x_embed)
+            else:
+                eps, _ = self.nn_model(y_i, x_batch, t_is, context_mask)
+            if not is_zero:
+                eps1 = eps[:n_sample]
+                eps2 = eps[n_sample:]
+                eps = (1 + self.guide_w) * eps1 - self.guide_w * eps2
+                y_i = y_i[:n_sample]
+            y_i = self.oneover_sqrta[i] * (y_i - eps * self.mab_over_sqrtmab[i]) + self.sqrt_beta_t[i] * z
+            if return_y_trace and (i % 20 == 0 or i == self.n_T or i < 8):
+                y_i_store.append(y_i.detach().cpu().numpy())
+
+        if return_y_trace:
+            return y_i, y_i_store
+        else:
+            return y_i
+
+    def sample_update(self, x_batch, betas, n_T, return_y_trace=False):
+        original_nT = self.n_T
+
+        # set new schedule
+        self.n_T = n_T
+        for k, v in ddpm_schedules(betas[0], betas[1], self.n_T).items():
+            self.register_buffer(k, v.to(self.device))
+
+        # also use this as a shortcut to avoid doubling batch when guide_w is zero
+        is_zero = False
+        if self.guide_w > -1e-3 and self.guide_w < 1e-3:
+            is_zero = True
+
+        # how many noisy actions to begin with
+        n_sample = x_batch.shape[0]
+
+        y_shape = (n_sample, self.y_dim)
+
+        # sample initial noise, y_0 ~ N(0, 1),
+        y_i = torch.randn(y_shape).to(self.device)
+
+        if not is_zero:
+            if len(x_batch.shape) > 2:
+                # repeat x_batch twice, so can use guided diffusion
+                x_batch = x_batch.repeat(2, 1, 1, 1)
+            else:
+                # repeat x_batch twice, so can use guided diffusion
+                x_batch = x_batch.repeat(2, 1)
+            # half of context will be zero
+            context_mask = torch.zeros(x_batch.shape[0]).to(self.device)
+            context_mask[n_sample:] = 1.0  # makes second half of batch context free
+        else:
+            context_mask = torch.zeros(x_batch.shape[0]).to(self.device)
+
+        # run denoising chain
+        y_i_store = []  # if want to trace how y_i evolved
+        for i in range(self.n_T, 0, -1):
+            t_is = torch.tensor([i / self.n_T]).to(self.device)
+            t_is = t_is.repeat(n_sample, 1)
+
+            if not is_zero:
+                # double batch
+                y_i = y_i.repeat(2, 1)
+                t_is = t_is.repeat(2, 1)
+
+            # I'm a bit confused why we are adding noise during denoising?
+            z = torch.randn(y_shape).to(self.device) if i > 1 else 0
+
+            # split predictions and compute weighting
+            eps, _ = self.nn_model(y_i, x_batch, t_is, context_mask)
+            if not is_zero:
+                eps1 = eps[:n_sample]
+                eps2 = eps[n_sample:]
+                eps = (1 + self.guide_w) * eps1 - self.guide_w * eps2
+                y_i = y_i[:n_sample]
+            y_i = self.oneover_sqrta[i] * (y_i - eps * self.mab_over_sqrtmab[i]) + self.sqrt_beta_t[i] * z
+            if return_y_trace and (i % 20 == 0 or i == self.n_T or i < 8):
+                y_i_store.append(y_i.detach().cpu().numpy())
+
+        # reset original schedule
+        self.n_T = original_nT
+        for k, v in ddpm_schedules(betas[0], betas[1], self.n_T).items():
+            self.register_buffer(k, v.to(self.device))
+
+        if return_y_trace:
+            return y_i, y_i_store
+        else:
+            return y_i
+
+    def sample_extra(self, x_batch, extra_steps=4, return_y_trace=False):
+        # also use this as a shortcut to avoid doubling batch when guide_w is zero
+        is_zero = False
+        if self.guide_w > -1e-3 and self.guide_w < 1e-3:
+            is_zero = True
+
+        # how many noisy actions to begin with
+        n_sample = x_batch.shape[0]
+
+        y_shape = (n_sample, self.y_dim)
+
+        # sample initial noise, y_0 ~ N(0, 1),
+        y_i = torch.randn(y_shape).to(self.device)
+
+        if not is_zero:
+            if len(x_batch.shape) > 2:
+                # repeat x_batch twice, so can use guided diffusion
+                x_batch = x_batch.repeat(2, 1, 1, 1)
+            else:
+                # repeat x_batch twice, so can use guided diffusion
+                x_batch = x_batch.repeat(2, 1)
+            # half of context will be zero
+            context_mask = torch.zeros(x_batch.shape[0]).to(self.device)
+            context_mask[n_sample:] = 1.0  # makes second half of batch context free
+        else:
+            # context_mask = torch.zeros_like(x_batch[:,0]).to(self.device)
+            context_mask = torch.zeros(x_batch.shape[0]).to(self.device)
+
+        # run denoising chain
+        y_i_store = []  # if want to trace how y_i evolved
+        # for i_dummy in range(self.n_T, 0, -1):
+        for i_dummy in range(self.n_T, -extra_steps, -1):
+            i = max(i_dummy, 1)
+            t_is = torch.tensor([i / self.n_T]).to(self.device)
+            t_is = t_is.repeat(n_sample, 1)
+
+            if not is_zero:
+                # double batch
+                y_i = y_i.repeat(2, 1)
+                t_is = t_is.repeat(2, 1)
+
+            z = torch.randn(y_shape).to(self.device) if i > 1 else 0
+
+            # split predictions and compute weighting
+            eps, _ = self.nn_model(y_i, x_batch, t_is, context_mask)
+            if not is_zero:
+                eps1 = eps[:n_sample]
+                eps2 = eps[n_sample:]
+                eps = (1 + self.guide_w) * eps1 - self.guide_w * eps2
+                y_i = y_i[:n_sample]
+            y_i = self.oneover_sqrta[i] * (y_i - eps * self.mab_over_sqrtmab[i]) + self.sqrt_beta_t[i] * z
+            if return_y_trace and (i % 20 == 0 or i == self.n_T or i < 8):
+                y_i_store.append(y_i.detach().cpu().numpy())
+
+        if return_y_trace:
+            return y_i, y_i_store
+        else:
+            return y_i
+
+
+class Model_cnn_mlp_New_Arch(nn.Module):
+    def __init__(self, x_shape, n_hidden, y_dim, embed_dim, net_type, output_dim=None, cnn_out_dim=1152):
+        super(Model_cnn_mlp_New_Arch, self).__init__()
+
+        self.x_shape = x_shape
+        self.n_hidden = n_hidden
+        self.y_dim = y_dim
+        self.embed_dim = embed_dim
+        self.n_feat = 64
+        self.net_type = net_type
+
+        if output_dim is None:
+            self.output_dim = y_dim  # by default, just output size of action space
+        else:
+            self.output_dim = output_dim  # sometimes overwrite, eg for discretised, mean/variance, mixture density models
+
+        # set up CNN for image
+        self.conv_down1 = nn.Sequential(
+            ResidualConvBlock(self.x_shape[-1], self.n_feat, is_res=True),
+            nn.MaxPool2d(2),
+        )
+        self.conv_down3 = nn.Sequential(
+            ResidualConvBlock(self.n_feat, self.n_feat * 2, is_res=True),
+            nn.MaxPool2d(2),
+        )
+        self.imageembed = nn.Sequential(nn.AvgPool2d(8))
+
+        # cnn_out_dim = self.n_feat * 2  # how many features after flattening -- WARNING, will have to adjust this for diff size input resolution
+        cnn_out_dim = cnn_out_dim
+        # it is the flattened size after CNN layers, and average pooling
+
+        # then once have flattened vector out of CNN, just feed into previous Model_mlp_diff_embed
+        self.nn_downstream = Model_mlp_diff_embed(
+            cnn_out_dim,
+            self.n_hidden,
+            self.y_dim,
+            self.embed_dim,
+            self.output_dim,
+            is_dropout=False,
+            is_batch=False,
+            activation="relu",
+            net_type=self.net_type,
+            use_prev=False,
+        )
+	
+        self.fc1 = nn.Linear(cnn_out_dim, 512)
+        self.fc3 = nn.Linear(512, 128)
+        self.fc4 = nn.Linear(128, 32)
+        self.fc5 = nn.Linear(32, 3)
+        self.bn2 = nn.BatchNorm1d(512)
+        self.bn3 = nn.BatchNorm1d(128)
+        self.bn4 = nn.BatchNorm1d(32)
+        self.dropout = nn.Dropout(p=0.3)
+
+    def forward(self, y, x, t, context_mask, x_embed=None):
+        # torch expects batch_size, channels, height, width
+        # but we feed in batch_size, height, width, channels
+
+        action_hat = None
+
+        if x_embed is None:
+            x_embed = self.embed_context(x)
+            action_hat = self.standard_bc(x_embed)
+        else:
+            # otherwise, we already extracted x_embed
+            # e.g. outside of sampling loop
+            pass
+
+        return self.nn_downstream(y, x_embed, t, context_mask), action_hat
+
+    def embed_context(self, x):
+        x = x.permute(0, 3, 2, 1)
+        x1 = self.conv_down1(x)
+        x3 = self.conv_down3(x1)  # [batch_size, 128, 35, 18]
+        # c3 is [batch size, 128, 4, 4]
+        x_embed = self.imageembed(x3)
+        # c_embed is [batch size, 128, 1, 1]
+        x_embed = x_embed.view(x.shape[0], -1)
+        # c_embed is now [batch size, 128]
+        return x_embed
+    
+    def standard_bc(self, x_embed):
+        x = self.fc1(x_embed)
+        # x = self.bn2(x)
+        x = F.relu(x)
+        x = self.dropout(x)
+        # Camada 3: Linear -> BatchNorm -> ReLU -> Dropout
+        x = self.fc3(x)
+        # x = self.bn3(x)
+        x = F.relu(x)
+        x = self.dropout(x)
+        # Camada 4: Linear -> BatchNorm -> ReLU -> Dropout
+        x = self.fc4(x)
+        # x = self.bn4(x)
+        x = F.relu(x)
+        x = self.dropout(x)
+        # Camada 5: Linear (saída final)
+        x = self.fc5(x)
+        return x

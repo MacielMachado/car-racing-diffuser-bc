@@ -15,14 +15,14 @@ from train import CarRacingCustomDataset
 from data_preprocessing import DataHandler
 from run_car_racing import Tester
 from cart_racing_v2 import CarRacing
-from models import Model_Cond_Diffusion, Model_cnn_mlp, Model_cnn_bc
+from models import Model_Cond_Diffusion, Model_cnn_mlp, Model_cnn_bc, Model_Cond_Diffusion_New_Arch, Model_cnn_mlp_New_Arch
 
 class Trainer():
     def __init__(self, n_epoch, lrate, device, n_hidden, batch_size, n_T,
                  net_type, drop_prob, extra_diffusion_steps, embed_dim,
                  guide_w, betas, dataset_path, run_wandb, record_run,
                  name='', param_search=False, embedding="Model_cnn_mlp",
-                 dataset_origin="human"):
+                 dataset_origin="human", alpha_schedule='fixed_0-0'):
         self.n_epoch = n_epoch
         self.lrate = lrate
         self.device = device
@@ -45,6 +45,7 @@ class Trainer():
         self.best_reward = float('-inf')
         self.patience = 20
         self.early_stopping_counter = 0
+        self.alpha_schedule = alpha_schedule
 
     def main(self):
         if self.run_wandb:
@@ -124,7 +125,7 @@ class Trainer():
                                 embed_dim=self.embed_dim,
                                 net_type=self.net_type).to(self.device)
         elif self.embedding == "Model_cnn_mlp":
-            return Model_cnn_mlp(x_dim, self.n_hidden, y_dim,
+            return Model_cnn_mlp_New_Arch(x_dim, self.n_hidden, y_dim,
                                 embed_dim=self.embed_dim,
                                 net_type=self.net_type,
                                 cnn_out_dim=cnn_out_dim).to(self.device)
@@ -132,7 +133,7 @@ class Trainer():
             raise NotImplementedError
     
     def create_agent_model(self, conv_model, x_dim, y_dim):
-        return Model_Cond_Diffusion(
+        return Model_Cond_Diffusion_New_Arch(
             conv_model,
             betas=self.betas,
             n_T = self.n_T,
@@ -161,11 +162,19 @@ class Trainer():
             # train loop
             pbar = tqdm(dataload_train)
             loss_ep, n_batch = 0, 0
+            if self.alpha_schedule == 'cosine':
+                alpha = cosine_decay(ep, self.n_epoch)
+            elif self.alpha_schedule == 'exponential':
+                alpha = exponential_decay(ep, self.n_epoch)
+            else:
+                alpha = float(self.alpha_schedule.split('fixed_')[-1].replace('-', '.'))
+
             for x_batch, y_batch in pbar:
                 DataHandler().plot_batch(x_batch, y_batch, self.batch_size, render=False)
                 x_batch = x_batch.type(torch.FloatTensor).to(self.device)
                 y_batch = y_batch.type(torch.FloatTensor).to(self.device)
-                loss = model.loss_on_batch(x_batch, y_batch)
+                loss_diffusion, loss_std = model.loss_on_batch(x_batch, y_batch)
+                loss = alpha * loss_std + (1-alpha) * loss_diffusion
                 optim.zero_grad()
                 loss.backward()
                 loss_ep += loss.detach().item()
@@ -186,13 +195,14 @@ class Trainer():
                                 "right_action_MSE": action_MSE[2]})
                         
                     results_ep.append(loss_ep / n_batch)
+                    break
             
             if ep % 10 == 0 or ep == 1:
-                stop, reward = self.early_stopping(model, ep)
-                name=f'_reward_{reward}'
-                self.save_model(model, name, ep)
-                if stop:
-                    break
+                # stop, reward = self.early_stopping(model, ep)
+                # name=f'_reward_{reward}'
+                self.save_model(model, self.name, ep)
+                # if stop:
+                #     break
 
             # if ep in [1, 20, 40, 80, 150, 250, 500, 600, 749]:
             #     name=f'model_novo_ep_{ep}'
@@ -225,8 +235,8 @@ class Trainer():
     def save_model(self, model, name, ep=''):
         # if self.param_search == True:
         #     return torch.save(model.state_dict(), os.path.join(os.getcwd(),name+'.pkl'))
-        os.makedirs(os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1], exist_ok=True)
-        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1]+'/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{ep}_{name}'+'.pkl')
+        os.makedirs(os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1]+'/new_arch', exist_ok=True)
+        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1]+'/new_arch/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{ep}_{name}'+'.pkl')
         # return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):
@@ -236,30 +246,41 @@ def extract_action_mse(y, y_hat):
     mse = torch.pow(y_diff_sum, 0.5)
     return mse
 
+def exponential_decay(epoch, total_episodes, initial_value=1.0, final_value=0.01):
+    decay_rate = -np.log(final_value / initial_value) / total_episodes
+    return initial_value * np.exp(-decay_rate * epoch)
+
+def cosine_decay(epoch, total_episodes, initial_value=1.0, final_value=0.0):
+    cosine_decay_value = 0.5 * (1 + np.cos(np.pi * epoch / total_episodes))
+    return final_value - (final_value - initial_value) * cosine_decay_value
+
 
 if __name__ == '__main__':
 
     dataset_path = "dataset_fixed"
-    dataset_path = "Datasets/ppo/tutorial_ppo_expert_68"
-    # dataset_path = "Datasets/human/tutorial_human_expert_0_top_20"
+    # dataset_path = "Datasets/ppo/tutorial_ppo_expert_68"
+    dataset_path = "Datasets/human/tutorial_human_expert_0_top_20"
     params = Params("experiments/version_3/params.json")
-    trainer_instance = Trainer( n_epoch=params.n_epoch,
-                                lrate=params.lrate,
-                                # device=params.device,
-                                device="mps",
-                                n_hidden=params.n_hidden,
-                                batch_size=1,
-                                n_T=params.n_T,
-                                net_type=params.net_type,
-                                drop_prob=params.drop_prob,
-                                extra_diffusion_steps=params.extra_diffusion_steps,
-                                embed_dim=params.embed_dim,
-                                guide_w=params.guide_w,
-                                betas=(1e-4, 0.02),
-                                dataset_path=dataset_path,
-                                name='trainer_400',
-                                run_wandb=True,
-                                record_run=True,
-                                embedding=params.embedding,
-                                dataset_origin="ppo")
+    alpha_schedule_list = ['exponential', 'fixed_0-3']
+    for alpha_schedule in alpha_schedule_list:
+        trainer_instance = Trainer( n_epoch=params.n_epoch,
+                                    lrate=params.lrate,
+                                    # device=params.device,
+                                    device="mps",
+                                    n_hidden=params.n_hidden,
+                                    batch_size=1,
+                                    n_T=params.n_T,
+                                    net_type=params.net_type,
+                                    drop_prob=params.drop_prob,
+                                    extra_diffusion_steps=params.extra_diffusion_steps,
+                                    embed_dim=params.embed_dim,
+                                    guide_w=params.guide_w,
+                                    betas=(1e-4, 0.02),
+                                    dataset_path=dataset_path,
+                                    name='model_'+alpha_schedule,
+                                    run_wandb=True,
+                                    record_run=True,
+                                    embedding=params.embedding,
+                                    dataset_origin="human",
+                                    alpha_schedule=alpha_schedule)
     trainer_instance.main()

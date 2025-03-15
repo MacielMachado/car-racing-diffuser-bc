@@ -16,6 +16,16 @@ from data_preprocessing import DataHandler
 from run_car_racing import Tester
 from cart_racing_v2 import CarRacing
 from models import Model_Cond_Diffusion, Model_cnn_mlp, Model_cnn_bc
+from models import (
+    Model_cnn_mlp,
+    Model_Cond_Discrete,
+    Model_Cond_MSE,
+    Model_Cond_MeanVariance,
+    Model_Cond_Diffusion,
+    Model_Cond_BeT,
+    Model_Cond_Kmeans,
+    Model_Cond_EBM,
+)
 
 class Trainer():
     def __init__(self, n_epoch, lrate, device, n_hidden, batch_size, n_T,
@@ -132,16 +142,7 @@ class Trainer():
             raise NotImplementedError
     
     def create_agent_model(self, conv_model, x_dim, y_dim):
-        return Model_Cond_Diffusion(
-            conv_model,
-            betas=self.betas,
-            n_T = self.n_T,
-            device=self.device,
-            x_dim=x_dim,
-            y_dim=y_dim,
-            drop_prob=self.drop_prob,
-            guide_w=self.guide_w
-        ).to(self.device)
+        return Model_Cond_MSE(conv_model, device=self.device, x_dim=x_dim, y_dim=y_dim).to(self.device)
     
     def create_optimizer(self, model):
         return torch.optim.Adam(model.parameters(), lr=self.lrate)
@@ -225,8 +226,8 @@ class Trainer():
     def save_model(self, model, name, ep=''):
         # if self.param_search == True:
         #     return torch.save(model.state_dict(), os.path.join(os.getcwd(),name+'.pkl'))
-        os.makedirs(os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1], exist_ok=True)
-        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1]+'/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{ep}_{name}'+'.pkl')
+        os.makedirs(os.getcwd()+'/model_pytorch_mse/'+self.dataset_path.split(os.sep)[1], exist_ok=True)
+        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch_mse/'+self.dataset_path.split(os.sep)[1]+'/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{ep}_{name}'+'.pkl')
         # return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):
@@ -239,9 +240,9 @@ def extract_action_mse(y, y_hat):
 
 if __name__ == '__main__':
 
-    dataset_path = "dataset_fixed"
-    dataset_path = "Datasets/ppo/tutorial_ppo_expert_68"
-    # dataset_path = "Datasets/human/tutorial_human_expert_0_top_20"
+    # dataset_path = "dataset_fixed"
+    # dataset_path = "Datasets/ppo/tutorial_ppo_expert_68"
+    dataset_path = "Datasets/human/tutorial_human_expert_0_top_20"
     params = Params("experiments/version_3/params.json")
     trainer_instance = Trainer( n_epoch=params.n_epoch,
                                 lrate=params.lrate,
@@ -257,8 +258,8 @@ if __name__ == '__main__':
                                 guide_w=params.guide_w,
                                 betas=(1e-4, 0.02),
                                 dataset_path=dataset_path,
-                                name='trainer_400',
-                                run_wandb=True,
+                                name='trainer_mse',
+                                run_wandb=False,
                                 record_run=True,
                                 embedding=params.embedding,
                                 dataset_origin="ppo")

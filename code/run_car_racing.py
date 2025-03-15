@@ -24,7 +24,8 @@ class Tester(RecordObservations):
         self.actions = []
         self.observations = []
         self.infos = []
-        self.path = os.getcwd() + '/dissertation/' + self.name + '/'
+        self.path = os.getcwd() + '/dissertation_extra_diff_0_2/' + self.name + '/'
+        # self.path = os.getcwd() + '/analysis/diff_BC/diff_BC_1/'
         os.makedirs(self.path, exist_ok=True)
 
     def run_trainer(self, dataset_origin="human", seed=None):   
@@ -61,16 +62,21 @@ class Tester(RecordObservations):
         reward_list = []  
         while episode < 50:
             # np.random.seed(40) # 1
+            np.random.seed(1) # 1
             obs, _ = self.env.reset()
             reward = 0
             counter=0
             done = False
             truncated = False
+            # os.makedirs("analysis/diff_BC", exist_ok=True)
             while counter < 1000:
                 self.model.eval()
                 if dataset_origin == "ppo":
                     obs = obs[0:84, 0:84, :]
                 obs_tensor = self.preprocess_obs(obs)
+
+                # plt.imsave(f"analysis/diff_BC/diff_BC_1_{counter}_"+str(list(action[0].cpu().detach().numpy())).replace('.', '_').replace(', ', '__')+".png", obs)
+
                 torch.from_numpy(obs_tensor).float().to(self.device).shape
                 obs_tensor = (
                     torch.Tensor(obs_tensor).type(torch.FloatTensor).to(self.device)
@@ -104,7 +110,7 @@ class Tester(RecordObservations):
                 
                 # VideoMaker.save_record(frames=self.observations, name=self.path+'video_'+str(gain).replace(".", "_"))
 
-            if save:
+            if True:
                 self.scatter_plot_reward(reward_list, gain, extra_diffusion_steps)
                 df = pd.DataFrame(reward_list, columns=["Values"])
                 df.to_csv(self.path+'rewards_' + str(gain).replace(".", "_") + '_' +  f'{episode}' + ".csv", index=False)
@@ -119,11 +125,11 @@ class Tester(RecordObservations):
         plt.xlabel("Episode")
         plt.ylim([0, 1000])
         plt.grid()
-        path = "dissertation/scatter/"+self.name+"/"
+        path = "dissertation/scatter_extra_diff_0/"+self.name+"/"
         os.makedirs(path, exist_ok=True)
-        plt.savefig(path+self.name+"_scatter_fixed_"+str(gain).replace(".", "_")+f"_extra_diffusion_steps_{extra_diffusion_steps}.png")
+        plt.savefig(self.path+self.name+"_scatter_fixed_"+str(gain).replace(".", "_")+f"_extra_diffusion_steps_{extra_diffusion_steps}.png")
         df = pd.DataFrame(reward_list, columns=["Values"])
-        df.to_csv(path+self.name+"_scatter_fixed_"+str(gain).replace(".", "_") + f"_extra_diffusion_steps_{extra_diffusion_steps}.csv", index=False)
+        df.to_csv(self.path+self.name+"_scatter_fixed_"+str(gain).replace(".", "_") + f"_extra_diffusion_steps_{extra_diffusion_steps}.csv", index=False)
         plt.close()
 
     def config_wandb(self, project_name, name):
@@ -172,8 +178,9 @@ if __name__ == '__main__':
             x_shape = (96, 96, 4)
             y_dim = 3
 
-            # env = CarRacing(render_mode="rgb-array") 
-            env = CarRacing(render_mode="rgb_array") 
+            np.random.seed(40) # 1
+            env = CarRacing(render_mode="rgb-array") 
+            # env = CarRacing(render_mode="human") 
             # env = CarRacing(render_mode="human") 
             nn_model = Model_cnn_mlp(
                 x_shape, n_hidden, y_dim, embed_dim=embed_dim, net_type=net_type
@@ -200,7 +207,7 @@ if __name__ == '__main__':
                            name="version_" + str(version),
                            gain=gain,
                            save=True,
-                           extra_diffusion_steps=16)
+                           extra_diffusion_steps=0)
             except Exception as exception:
                 print("---------------------------------------------------")
                 print(f"The {version} couldn't be trained due to ")
