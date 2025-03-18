@@ -195,7 +195,6 @@ class Trainer():
                                 "right_action_MSE": action_MSE[2]})
                         
                     results_ep.append(loss_ep / n_batch)
-                    break
             
             if ep % 10 == 0 or ep == 1:
                 # stop, reward = self.early_stopping(model, ep)
@@ -235,8 +234,8 @@ class Trainer():
     def save_model(self, model, name, ep=''):
         # if self.param_search == True:
         #     return torch.save(model.state_dict(), os.path.join(os.getcwd(),name+'.pkl'))
-        os.makedirs(os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1]+'/new_arch', exist_ok=True)
-        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1]+'/new_arch/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{ep}_{name}'+'.pkl')
+        os.makedirs(os.getcwd()+'/model_pytorch_teste/'+self.dataset_path.split(os.sep)[1]+'/new_arch', exist_ok=True)
+        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch_teste/'+self.dataset_path.split(os.sep)[1]+'/new_arch/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()[0:6]+'_ep_'+f'{ep}_{name}'+'.pkl')
         # return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):
@@ -261,26 +260,33 @@ if __name__ == '__main__':
     # dataset_path = "Datasets/ppo/tutorial_ppo_expert_68"
     dataset_path = "Datasets/human/tutorial_human_expert_0_top_20"
     params = Params("experiments/version_3/params.json")
-    alpha_schedule_list = ['exponential', 'fixed_0-3']
-    for alpha_schedule in alpha_schedule_list:
-        trainer_instance = Trainer( n_epoch=params.n_epoch,
-                                    lrate=params.lrate,
-                                    # device=params.device,
-                                    device="mps",
-                                    n_hidden=params.n_hidden,
-                                    batch_size=1,
-                                    n_T=params.n_T,
-                                    net_type=params.net_type,
-                                    drop_prob=params.drop_prob,
-                                    extra_diffusion_steps=params.extra_diffusion_steps,
-                                    embed_dim=params.embed_dim,
-                                    guide_w=params.guide_w,
-                                    betas=(1e-4, 0.02),
-                                    dataset_path=dataset_path,
-                                    name='model_'+alpha_schedule,
-                                    run_wandb=True,
-                                    record_run=True,
-                                    embedding=params.embedding,
-                                    dataset_origin="human",
-                                    alpha_schedule=alpha_schedule)
-    trainer_instance.main()
+    # alpha_schedule_list = ['exponential', 'fixed_0-3']
+    dataset_list = ["Datasets/human/tutorial_human_expert_0_top_20",
+                    "Datasets/human/tutorial_human_expert_1",
+                    "Datasets/human/tutorial_human_expert_2",
+                    "Datasets/human/tutorial_human_expert_0",
+                    ]
+    alpha_schedule_list = ['fixed_0-0']
+    for dataset_path in dataset_list:
+        for alpha_schedule in alpha_schedule_list:
+            trainer_instance = Trainer( n_epoch=80,
+                                        lrate=params.lrate,
+                                        # device=params.device,
+                                        device="mps",
+                                        n_hidden=params.n_hidden,
+                                        batch_size=1,
+                                        n_T=params.n_T,
+                                        net_type=params.net_type,
+                                        drop_prob=params.drop_prob,
+                                        extra_diffusion_steps=params.extra_diffusion_steps,
+                                        embed_dim=params.embed_dim,
+                                        guide_w=params.guide_w,
+                                        betas=(1e-4, 0.02),
+                                        dataset_path=dataset_path,
+                                        name='model_'+dataset_path.split('/')[-1],
+                                        run_wandb=True,
+                                        record_run=True,
+                                        embedding=params.embedding,
+                                        dataset_origin="human",
+                                        alpha_schedule=alpha_schedule)
+        trainer_instance.main()

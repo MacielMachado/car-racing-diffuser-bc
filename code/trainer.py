@@ -1,5 +1,4 @@
 import os
-import git
 import torch
 import wandb
 import logging
@@ -21,8 +20,7 @@ class Trainer():
     def __init__(self, n_epoch, lrate, device, n_hidden, batch_size, n_T,
                  net_type, drop_prob, extra_diffusion_steps, embed_dim,
                  guide_w, betas, dataset_path, run_wandb, record_run,
-                 name='', param_search=False, embedding="Model_cnn_mlp",
-                 dataset_origin="human"):
+                 name='', param_search=False, embedding="Model_cnn_BC"):
         self.n_epoch = n_epoch
         self.lrate = lrate
         self.device = device
@@ -41,32 +39,23 @@ class Trainer():
         self.run_wandb = run_wandb
         self.record_rum = record_run
         self.embedding = embedding
-        self.dataset_origin = dataset_origin
-        self.best_reward = float('-inf')
-        self.patience = 20
-        self.early_stopping_counter = 0
 
     def main(self):
         if self.run_wandb:
-            self.config_wandb(project_name="OpenAI-Car-Racing-Article-Diffuser", name=self.name)
+            self.config_wandb(project_name="car-racing-diffuser-bc-v2", name=self.name)
         torch_data_train, dataload_train = self.prepare_dataset()
         x_dim, y_dim = self.get_x_and_y_dim(torch_data_train)
         conv_model = self.create_conv_model(x_dim, y_dim)
         model = self.create_agent_model(conv_model, x_dim, y_dim)
         optim = self.create_optimizer(model)
         model = self.train(model, dataload_train, optim)
-        with torch.no_grad():
-            self.evaluate(model.eval(), CarRacing(), name='eval_'+self.name)
+        self.evaluate(model, CarRacing(), name='eval_'+self.name)
         
-    def evaluate(self, model, env, name, middle, seed):
+    def evaluate(self, model, env, name):
         tester = Tester(model, env, render=True, device=self.device)
-        if middle:
-            return tester.run_trainer(self.dataset_origin, seed)
-        else:
-            tester.run()
+        tester.run(run_wandb=self.run_wandb, name=name)
 
     def config_wandb(self, project_name, name):
-        wandb.login(key='9bcc371f01af2fc8ddab2c3ad226caad57dc4ac5')
         config={
                 "n_epoch": self.n_epoch,
                 "lrate": self.lrate,
@@ -78,24 +67,16 @@ class Trainer():
                 "drop_prob": self.drop_prob,
                 "extra_diffusion_steps": self.extra_diffusion_steps,
                 "embed_dim": self.embed_dim,
-                "guide_w": self.guide_w,
-                "dataset": self.dataset_path,
-                "model": self.embedding,
-                "commit_hash": self.get_git_commit_hash()
+                "guide_w": self.guide_w
             }
         if name != '':
             return wandb.init(project=project_name, name=name, config=config)
         return wandb.init(project=project_name, config=config)
 
-    def get_git_commit_hash(self):
-        repo = git.Repo(search_parent_directories=True)
-        return repo.head.object.hexsha
-
     def prepare_dataset(self):
         tf = transforms.Compose([])
         torch_data_train = CarRacingCustomDataset(
-            self.dataset_path, transform=tf, train_or_test='train', train_prop=0.10,
-            dataset_origin=self.dataset_origin
+            self.dataset_path, transform=tf, train_or_test='train', train_prop=0.90
         )
         dataload_train = DataLoader(
             torch_data_train, batch_size=self.batch_size, shuffle=False, num_workers=0
@@ -112,24 +93,14 @@ class Trainer():
         return x_dim, y_dim
     
     def create_conv_model(self, x_dim, y_dim):
-
-        if self.dataset_origin == 'ppo':
-            cnn_out_dim = 1152
-            # cnn_out_dim = 512
-        else:
-            cnn_out_dim = 1152
-
-        if self.embedding == "Model_cnn_bc":
+        if self.embedding == "Model_cnn_BC":
             return Model_cnn_bc(self.n_hidden, y_dim,
                                 embed_dim=self.embed_dim,
                                 net_type=self.net_type).to(self.device)
         elif self.embedding == "Model_cnn_mlp":
             return Model_cnn_mlp(x_dim, self.n_hidden, y_dim,
                                 embed_dim=self.embed_dim,
-                                net_type=self.net_type,
-                                cnn_out_dim=cnn_out_dim).to(self.device)
-        else:
-            raise NotImplementedError
+                                net_type=self.net_type).to(self.device)
     
     def create_agent_model(self, conv_model, x_dim, y_dim):
         return Model_Cond_Diffusion(
@@ -173,61 +144,29 @@ class Trainer():
                 pbar.set_description(f"train loss: {loss_ep/n_batch:.4f}")
                 optim.step()
 
-                with torch.no_grad():
-                    y_hat_batch = model.sample(x_batch)
-                    action_MSE = extract_action_mse(y_batch, y_hat_batch)
+            with torch.no_grad():
+                y_hat_batch = model.sample(x_batch)
+                action_MSE = extract_action_mse(y_batch, y_hat_batch)
 
-                if self.run_wandb:
-                    # log metrics to wandb
-                    wandb.log({"loss": loss_ep/n_batch,
-                                "lr": lr_decay,
-                                "left_action_MSE": action_MSE[0],
-                                "acceleration_action_MSE": action_MSE[1],
-                                "right_action_MSE": action_MSE[2]})
-                        
-                    results_ep.append(loss_ep / n_batch)
+            if self.run_wandb:
+                # log metrics to wandb
+                wandb.log({"loss": loss_ep/n_batch,
+                            "lr": lr_decay,
+                            "left_action_MSE": action_MSE[0],
+                            "acceleration_action_MSE": action_MSE[1],
+                            "right_action_MSE": action_MSE[2]})
+                    
+                results_ep.append(loss_ep / n_batch)
             
-            if ep % 10 == 0 or ep == 1:
-                stop, reward = self.early_stopping(model, ep)
-                name=f'_reward_{reward}'
-                self.save_model(model, name, ep)
-                if stop:
-                    break
-
-            # if ep in [1, 20, 40, 80, 150, 250, 500, 600, 749]:
-            #     name=f'model_novo_ep_{ep}'
-            #     self.save_model(model, name, ep)
-
-        if self.run_wandb:
-            wandb.finish()
+        self.save_model(model)
+        if self.run_wandb: wandb.finish()
         
         return model
-    
-    def early_stopping(self, model, ep):
-        with torch.no_grad():
-            reward = self.evaluate(model.eval(), CarRacing(), name=self.name+'_eval', middle=True, seed=1)
-        wandb.log({"reward": reward})
-        if reward > self.best_reward:
-            self.best_reward = reward
-            self.counter = 0
-            name=f'_model_best_reward_{reward}'
-            self.save_model(model, name, ep)
-        else:
-            self.counter += 1
-        stop = False
 
-        if self.counter >= self.patience:
-            print(f'Early stopping after {ep+1} epochs without improvement.')
-            stop = True
-        return stop, reward
-
-
-    def save_model(self, model, name, ep=''):
-        # if self.param_search == True:
-        #     return torch.save(model.state_dict(), os.path.join(os.getcwd(),name+'.pkl'))
-        os.makedirs(os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1], exist_ok=True)
-        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch/'+self.dataset_path.split(os.sep)[1]+'/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()+'_ep_'+f'{ep}_{name}'+'.pkl')
-        # return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
+    def save_model(self, model):
+        if self.param_search == False:
+            return torch.save(model.state_dict(), os.getcwd()+'/model_novo_bc.pkl')
+        return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):
     assert len(y) == len(y_hat)
@@ -240,13 +179,10 @@ def extract_action_mse(y, y_hat):
 if __name__ == '__main__':
 
     dataset_path = "dataset_fixed"
-    dataset_path = "Datasets/ppo/tutorial_ppo_expert_68"
-    # dataset_path = "Datasets/human/tutorial_human_expert_0_top_20"
-    params = Params("experiments/version_3/params.json")
+    params = Params("experiments/default/params.json")
     trainer_instance = Trainer( n_epoch=params.n_epoch,
                                 lrate=params.lrate,
-                                # device=params.device,
-                                device="mps",
+                                device=params.device,
                                 n_hidden=params.n_hidden,
                                 batch_size=1,
                                 n_T=params.n_T,
@@ -258,8 +194,7 @@ if __name__ == '__main__':
                                 betas=(1e-4, 0.02),
                                 dataset_path=dataset_path,
                                 name='trainer_400',
-                                run_wandb=True,
-                                record_run=True,
-                                embedding=params.embedding,
-                                dataset_origin="ppo")
+                                run_wandb=False,
+                                record_run=False,
+                                embedding=params.embedding)
     trainer_instance.main()
