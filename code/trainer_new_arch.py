@@ -181,7 +181,6 @@ class Trainer():
                 n_batch += 1
                 pbar.set_description(f"train loss: {loss_ep/n_batch:.4f}")
                 optim.step()
-
                 with torch.no_grad():
                     y_hat_batch = model.sample(x_batch)
                     action_MSE = extract_action_mse(y_batch, y_hat_batch)
@@ -235,7 +234,8 @@ class Trainer():
         # if self.param_search == True:
         #     return torch.save(model.state_dict(), os.path.join(os.getcwd(),name+'.pkl'))
         os.makedirs(os.getcwd()+'/model_pytorch_teste/'+self.dataset_path.split(os.sep)[1]+'/new_arch', exist_ok=True)
-        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch_teste/'+self.dataset_path.split(os.sep)[1]+'/new_arch/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()[0:6]+'_ep_'+f'{ep}_{name}'+'.pkl')
+        # torch.save(model.state_dict(), os.getcwd()+'/model_pytorch_teste/'+self.dataset_path.split(os.sep)[1]+'/new_arch/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()[0:6]+'_ep_'+f'{ep}_{name}'+'.pkl')
+        torch.save(model.state_dict(), os.getcwd()+'/model_pytorch_teste/'+self.dataset_path.split(os.sep)[1]+'/new_arch/'+self.dataset_path.split(os.sep)[2]+'_'+self.get_git_commit_hash()[0:6]+'_ep_'+f'{ep}'+'.pkl')
         # return torch.save(model.state_dict(), 'experiments/' + self.name + '.pkl')
 
 def extract_action_mse(y, y_hat):
@@ -272,7 +272,7 @@ if __name__ == '__main__':
             trainer_instance = Trainer( n_epoch=80,
                                         lrate=params.lrate,
                                         # device=params.device,
-                                        device="mps",
+                                        device="cuda",
                                         n_hidden=params.n_hidden,
                                         batch_size=1,
                                         n_T=params.n_T,

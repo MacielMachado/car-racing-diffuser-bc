@@ -1,0 +1,4 @@
+name: car_racing_diffuser_bc
+channels:
+  - conda-forge
+prefix: /Users/brunomaciel/miniforge3/envs/car_racing_diffuser_bc
