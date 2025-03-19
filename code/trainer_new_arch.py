@@ -261,7 +261,8 @@ if __name__ == '__main__':
     dataset_path = "Datasets/human/tutorial_human_expert_0_top_20"
     params = Params("experiments/version_3/params.json")
     # alpha_schedule_list = ['exponential', 'fixed_0-3']
-    dataset_list = ["Datasets/human/tutorial_human_expert_0_top_20",
+    dataset_list = [
+                    # "Datasets/human/tutorial_human_expert_0_top_20",
                     "Datasets/human/tutorial_human_expert_1",
                     "Datasets/human/tutorial_human_expert_2",
                     "Datasets/human/tutorial_human_expert_0",
@@ -289,4 +290,4 @@ if __name__ == '__main__':
                                         embedding=params.embedding,
                                         dataset_origin="human",
                                         alpha_schedule=alpha_schedule)
-        trainer_instance.main()
+            trainer_instance.main()
